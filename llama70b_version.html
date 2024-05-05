@@ -24,10 +24,11 @@
 
     const canvas = document.getElementById('canvas');
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x808080); // Grey environment color
     const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
-    camera.position.z = 50; // Move the camera above the maze
-    camera.position.y = 30; // Move the camera above the maze
-    camera.lookAt(new THREE.Vector3(15, 15, 0)); // Look at the center of the maze
+    camera.position.z = 600; // Move the camera above the maze
+    camera.position.y = 75; // Move the camera above the maze
+    camera.lookAt(new THREE.Vector3(150, 150, 0)); // Look at the center of the maze
     const renderer = new THREE.WebGLRenderer({
       canvas: canvas,
       antialias: true
@@ -36,9 +37,9 @@
 
     // Generate maze using recursive backtracking
     const mazeSize = 30;
-    const blockWidth = 1;
-    const blockHeight = 1;
-    const blockDepth = 1;
+    const blockWidth = 10;
+    const blockHeight = 10;
+    const blockDepth = 10;
     const maze = [];
     for (let x = 0; x < mazeSize; x++) {
       maze[x] = [];
@@ -83,16 +84,16 @@
           scene.add(mesh);
         } else {
           const mesh = new THREE.Mesh(geometry, floorMaterial);
-          mesh.position.set(x * blockWidth, y * blockHeight, -0.5); // Move the floor down a bit
+          mesh.position.set(x * blockWidth, y * blockHeight, -blockDepth / 2); // Move the floor down a bit
           scene.add(mesh);
         }
       }
     }
 
     // Create floor
-    const floorGeometry = new THREE.BoxGeometry(mazeSize, mazeSize, 5);
+    const floorGeometry = new THREE.BoxGeometry(mazeSize * blockWidth, mazeSize * blockHeight, blockDepth * 5);
     const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
-    floorMesh.position.set(mazeSize / 2, mazeSize / 2, -2.5); // Center the floor
+    floorMesh.position.set(mazeSize * blockWidth / 2, mazeSize * blockHeight / 2, -blockDepth * 2.5); // Center the floor
     scene.add(floorMesh);
 
     // Render loop
