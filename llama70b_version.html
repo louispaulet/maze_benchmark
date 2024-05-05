@@ -34,7 +34,7 @@
     });
     const controls = new OrbitControls(camera, canvas);
 
-    // Generate maze
+    // Generate maze using recursive backtracking
     const mazeSize = 30;
     const blockWidth = 1;
     const blockHeight = 1;
@@ -43,9 +43,33 @@
     for (let x = 0; x < mazeSize; x++) {
       maze[x] = [];
       for (let y = 0; y < mazeSize; y++) {
-        maze[x][y] = Math.random() < 0.5? 1 : 0; // 1 = wall, 0 = empty
+        maze[x][y] = 1; // Initialize all cells as walls
       }
     }
+    const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // Up, down, left, right
+    function carveMaze(x, y) {
+      const stack = [[x, y]];
+      while (stack.length > 0) {
+        const [cx, cy] = stack[stack.length - 1];
+        maze[cx][cy] = 0; // Mark current cell as empty
+        let directionsToExplore = [...directions];
+        while (directionsToExplore.length > 0) {
+          const directionIndex = Math.floor(Math.random() * directionsToExplore.length);
+          const [dx, dy] = directionsToExplore.splice(directionIndex, 1)[0];
+          const nx = cx + 2 * dx;
+          const ny = cy + 2 * dy;
+          if (nx >= 0 && nx < mazeSize && ny >= 0 && ny < mazeSize && maze[nx][ny] === 1) {
+            maze[cx + dx][cy + dy] = 0; // Carve a path to the new cell
+            stack.push([nx, ny]);
+            break;
+          }
+        }
+        if (directionsToExplore.length === 0) {
+          stack.pop();
+        }
+      }
+    }
+    carveMaze(1, 1); // Start carving the maze from the top-left corner
 
     // Create maze geometry
     const geometry = new THREE.BoxGeometry(blockWidth, blockHeight, blockDepth);
@@ -64,6 +88,12 @@
         }
       }
     }
+
+    // Create floor
+    const floorGeometry = new THREE.BoxGeometry(mazeSize, mazeSize, 5);
+    const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+    floorMesh.position.set(mazeSize / 2, mazeSize / 2, -2.5); // Center the floor
+    scene.add(floorMesh);
 
     // Render loop
     function animate() {
