@@ -46,6 +46,7 @@ Ranked from best to worse:
 - [c4ai-command-r-plus Version](https://louispaulet.github.io/maze_benchmark/c4ai-command-r-plus_version.html)  
   (Note: Zephyr 141B-A35B is an advanced iteration of the Mistral 8x22B model.)  
 - [Nous-Hermes-2-Mixtral-8x7B-DPO_version Version](https://louispaulet.github.io/maze_benchmark/Nous-Hermes-2-Mixtral-8x7B-DPO_version.html)   
+- Phi-3-mini-4k-instruct: code doesn't work (OrbitControls is not defined), context is too small for debug.  
 
 ## Contributing
 Contributions to the Maze Benchmark project are more than welcome! If you have suggestions for improving the code, new features, or bug fixes, please feel free to fork the repository and submit a pull request.
