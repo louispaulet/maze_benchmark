@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maze</title>
+  <style>
+    body { margin: 0; }
+  </style>
+</head>
+<body>
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.121.1/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js';
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+
+    // Generate a 30x30 grid of blocks
+    const blockSize = 5;
+    const grid = [];
+    for (let i = 0; i < 30; i++) {
+      grid[i] = [];
+      for (let j = 0; j < 30; j++) {
+        const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+        const material = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const block = new THREE.Mesh(geometry, material);
+        block.position.set(i * blockSize, 0, j * blockSize);
+        block.walls = {
+          top: true,
+          bottom: true,
+          left: true,
+          right: true
+        };
+        grid[i][j] = block;
+        scene.add(block);
+      }
+    }
+
+    // Generate the maze
+    generateMaze(grid);
+
+    // Rotate the maze on mouse click
+    window.addEventListener('click', () => {
+      const maze = new THREE.Group();
+      for (let i = 0; i < 30; i++) {
+        for (let j = 0; j < 30; j++) {
+          const block = grid[i][j];
+          maze.add(block);
+        }
+      }
+      scene.add(maze);
+      scene.remove(...scene.children);
+      maze.rotation.y += Math.PI / 2;
+    });
+
+    // Add ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    // Add directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(10, 10, 10);
+    scene.add(directionalLight);
+
+    camera.position.set(25, 25, 25);
+    controls.update();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    function generateMaze(grid) {
+      const stack = [];
+      const visited = new Set();
+
+      function visit(cell) {
+        visited.add(cell);
+        const neighbors = getUnvisitedNeighbors(cell, visited);
+
+        if (neighbors.length > 0) {
+          const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+          stack.push(cell);
+
+          const wallToRemove = getWallBetween(cell, randomNeighbor);
+          removeWall(cell, randomNeighbor, wallToRemove);
+
+          visit(randomNeighbor);
+        } else if (stack.length > 0) {
+          const lastCell = stack.pop();
+          removeWall(lastCell, cell, getWallBetween(lastCell, cell));
+        }
+      }
+
+      // Start from a random cell
+      const startCell = grid[Math.floor(Math.random() * grid.length)][Math.floor(Math.random() * grid[0].length)];
+      visit(startCell);
+    }
+
+    function getUnvisitedNeighbors(cell, visited) {
+      const neighbors = [];
+      const { x, y } = cell;
+
+      if (x > 0 && !visited.has([x - 1, y])) {
+        neighbors.push([x - 1, y]);
+      }
+      if (x < grid.length - 1 && !visited.has([x + 1, y])) {
+        neighbors.push([x + 1, y]);
+      }
+      if (y > 0 && !visited.has([x, y - 1])) {
+        neighbors.push([x, y - 1]);
+      }
+      if (y < grid[0].length - 1 && !visited.has([x, y + 1])) {
+        neighbors.push([x, y + 1]);
+      }
+
+      return neighbors;
+    }
+
+    function getWallBetween(cell1, cell2) {
+      const { x: x1, y: y1 } = cell1;
+      const { x: x2, y: y2 } = cell2;
+
+      if (x1 === x2) {
+        return y1 < y2 ? 'top' : 'bottom';
+      } else {
+        return x1 < x2 ? 'left' : 'right';
+      }
+    }
+
+    function removeWall(cell1, cell2, wall) {
+      const { x: x1, y: y1 } = cell1;
+      const { x: x2, y: y2 } = cell2;
+
+      if (wall === 'top') {
+        grid[x1][y1].walls.top = false;
+        grid[x2][y2].walls.bottom = false;
+      } else if (wall === 'bottom') {
+        grid[x1][y1].walls.bottom = false;
+        grid[x2][y2].walls.top = false;
+      } else if (wall === 'left') {
+        grid[x1][y1].walls.left = false;
+        grid[x2][y2].walls.right = false;
+      } else if (wall === 'right') {
+        grid[x1][y1].walls.right = false;
+        grid[x2][y2].walls.left = false;
+      }
+    }
+  </script>
+</body>
+</html>

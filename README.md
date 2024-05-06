@@ -39,10 +39,12 @@ These steps ensure that each LLM's output is evaluated fairly from a user's pers
 
 Below are links to the final versions of each LLM-generated maze. Enjoy full navigational controls: use the left click to rotate, right click to translate, and middle click to adjust the zoom level.
 
+Ranked from best to worse:  
 - [GPT-4 Reference Maze](https://louispaulet.github.io/maze_benchmark/gpt4_maze.html)
 - [LLAMA3-70B Version](https://louispaulet.github.io/maze_benchmark/llama70b_version.html)
 - [Zephyr-Orpo-141b-A35b-v0.1 Version](https://louispaulet.github.io/maze_benchmark/zephyr-orpo-141b-A35b-v0.1_version.html)  
-  (Note: Zephyr 141B-A35B is an advanced iteration of the Mistral 8x22B model.)
+  (Note: Zephyr 141B-A35B is an advanced iteration of the Mistral 8x22B model.)  
+- [Nous-Hermes-2-Mixtral-8x7B-DPO_version Version](https://louispaulet.github.io/maze_benchmark/Nous-Hermes-2-Mixtral-8x7B-DPO_version.html)   
 
 ## Contributing
 Contributions to the Maze Benchmark project are more than welcome! If you have suggestions for improving the code, new features, or bug fixes, please feel free to fork the repository and submit a pull request.
