@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Generator</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="mazeCanvas"></canvas>
+    <script type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.121.1/build/three.module.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js';
+
+        const canvas = document.getElementById('mazeCanvas');
+        const renderer = new THREE.WebGLRenderer({ canvas });
+        const scene = new THREE.Scene();
+        const aspectRatio = window.innerWidth / window.innerHeight;
+        const fieldOfView = 60;
+        const nearPlane = 0.1;
+        const farPlane = 1000;
+        const camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
+
+        // Set camera position and look at the center of the maze
+        camera.position.set(30, 30, 30);
+        camera.lookAt(0, 0, 0);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(10, 10, 10);
+        scene.add(light);
+
+        const wallMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
+        const floorMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+
+        const cellSize = 3;
+        const mazeSize = 30;
+
+        function generateMaze(width, height) {
+            const maze = Array.from({ length: height }, () => Array(width).fill(true));
+            const currentCell = [Math.floor(Math.random() * width), Math.floor(Math.random() * height)];
+            maze[currentCell[1]][currentCell[0]] = [];
+            const stack = [[currentCell[0], currentCell[1]]];
+
+            while (stack.length) {
+                const [x, y] = stack.pop();
+                const neighbors = [
+                    [x - 1, y],
+                    [x + 1, y],
+                    [x, y - 1],
+                    [x, y + 1]
+                ];
+
+                const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                const [nx, ny] = randomNeighbor;
+
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height && maze[ny][nx].length === 0) {
+                    maze[ny][nx] = [[x, y]];
+                    maze[y][x].push(randomNeighbor);
+                    stack.push([x, y]);
+                    stack.push(randomNeighbor);
+                }
+            }
+
+            return maze;
+        }
+
+        function createMazeGeometry(maze) {
+            const geometry = new THREE.Geometry();
+            const floorGeometry = new THREE.BoxGeometry(cellSize, 1, cellSize);
+
+            for (let y = 0; y < maze.length; y++) {
+                for (let x = 0; x < maze[y].length; x++) {
+                    if (maze[y][x].length === 0) {
+                        const wallGeometry = new THREE.BoxGeometry(cellSize, 1, 0.1);
+                        const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial);
+                        wallMesh.position.set(x - mazeSize / 2, 0, y - mazeSize / 2);
+                        geometry.merge(wallMesh.geometry, wallMesh.matrix);
+                    }
+
+                    const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+                    floorMesh.position.set(x - mazeSize / 2, -0.5, y - mazeSize / 2);
+                    geometry.merge(floorMesh.geometry, floorMesh.matrix);
+                }
+            }
+
+            return geometry;
+        }
+
+        const maze = generateMaze(mazeSize, mazeSize);
+        const mazeGeometry = createMazeGeometry(maze);
+        const mazeMesh = new THREE.Mesh(mazeGeometry, wallMaterial);
+        scene.add(mazeMesh);
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
