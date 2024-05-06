@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Generator</title>
+    <style>
+        body { margin: 0; }
+        canvas { width: 100%; height: 100% }
+    </style>
+</head>
+<body>
+    <script type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.121.1/build/three.module.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js';
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+
+        const mazeSize = 30;
+        const blockSize = 10;
+        const wallThickness = 10;
+        const wallHeight = 10;
+
+        const maze = generateMaze(mazeSize);
+
+        function generateMaze(size) {
+            const maze = [];
+            for (let i = 0; i < size; i++) {
+                maze[i] = [];
+                for (let j = 0; j < size; j++) {
+                    maze[i][j] = 1;
+                }
+            }
+
+            const visited = [];
+            for (let i = 0; i < size; i++) {
+                visited[i] = [];
+                for (let j = 0; j < size; j++) {
+                    visited[i][j] = false;
+                }
+            }
+
+            const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+
+            function backtrack(x, y) {
+                visited[x][y] = true;
+
+                const neighbors = [];
+                for (let i = 0; i < directions.length; i++) {
+                    const newX = x + directions[i][0];
+                    const newY = y + directions[i][1];
+                    if (newX >= 0 && newX < size && newY >= 0 && newY < size && !visited[newX][newY]) {
+                        neighbors.push([newX, newY]);
+                    }
+                }
+
+                if (neighbors.length > 0) {
+                    const neighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    const dx = neighbor[0] - x;
+                    const dy = neighbor[1] - y;
+                    maze[Math.floor(x + dx / 2)][Math.floor(y + dy / 2)] = 0;
+                    backtrack(neighbor[0], neighbor[1]);
+                }
+            }
+
+            backtrack(0, 0);
+            return maze;
+        }
+
+        function createMaze() {
+            for (let i = 0; i < mazeSize; i++) {
+                for (let j = 0; j < mazeSize; j++) {
+                    if (maze[i][j] === 1) {
+                        const wallGeometry = new THREE.BoxGeometry(blockSize, wallHeight, wallThickness);
+                        const wallMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 });
+                        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                        wall.position.set(i * blockSize - (mazeSize * blockSize) / 2 + blockSize / 2, wallHeight / 2, j * blockSize - (mazeSize * blockSize) / 2 + blockSize / 2);
+                        scene.add(wall);
+                    }
+                }
+            }
+        }
+
+        createMaze();
+
+        // Add a light to the scene
+        const light = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(light);
+
+        // Set the camera position and target
+        const centerX = (mazeSize * blockSize) / 2;
+        const centerZ = (mazeSize * blockSize) / 2;
+        camera.position.set(centerX, mazeSize * blockSize, centerZ);
+        camera.lookAt(centerX, 0, centerZ);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
