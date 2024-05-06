@@ -1,0 +1,8 @@
+Please make a simple HTML page that contains a JS code to generate a maze (30x30 blocks).  
+Use recursive backtracking algorithm.
+The user can use his mouse click to rotate the scene.
+The camera should be placed above the center of the maze and show the entire maze in a top down manner.  
+Use three.js lib, here are the CDNs to use:
+
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.121.1/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js';
