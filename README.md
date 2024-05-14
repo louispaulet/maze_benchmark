@@ -42,6 +42,7 @@ Below are links to the final versions of each LLM-generated maze. Enjoy full nav
 Ranked from best to worse:  
 - [GPT-4 Reference Maze](https://louispaulet.github.io/maze_benchmark/gpt4_maze.html)
 - [LLAMA3-70B Version](https://louispaulet.github.io/maze_benchmark/llama70b_version.html)
+- [GPT4o-open interpreter Version](https://louispaulet.github.io/maze_benchmark/gpt4o_open_interpreter_version.html)
 - [Zephyr-Orpo-141b-A35b-v0.1 Version](https://louispaulet.github.io/maze_benchmark/zephyr-orpo-141b-A35b-v0.1_version.html)  
 - [c4ai-command-r-plus Version](https://louispaulet.github.io/maze_benchmark/c4ai-command-r-plus_version.html)  
   (Note: Zephyr 141B-A35B is an advanced iteration of the Mistral 8x22B model.)  
