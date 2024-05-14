@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Maze</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.121.1/build/three.module.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js';
+
+        const mazeSize = 30;
+        const cellSize = 5;
+        const wallHeight = 2;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enablePan = true;  // Enable panning with right mouse button
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.25;
+        controls.maxPolarAngle = Math.PI / 2;
+        controls.target.set(mazeSize * cellSize / 2, 0, mazeSize * cellSize / 2);
+        controls.update();
+
+        camera.position.set(mazeSize * cellSize / 2, 100, mazeSize * cellSize / 2);
+
+        const wallGeometry = new THREE.BoxGeometry(cellSize, wallHeight, cellSize);
+        const wallMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const floorGeometry = new THREE.PlaneGeometry(mazeSize * cellSize, mazeSize * cellSize);
+        const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x808080, side: THREE.DoubleSide });
+
+        // Add floor
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = Math.PI / 2;
+        floor.position.set(mazeSize * cellSize / 2 - cellSize / 2, 0, mazeSize * cellSize / 2 - cellSize / 2);
+        scene.add(floor);
+
+        const maze = [];
+        for (let i = 0; i < mazeSize; i++) {
+            maze[i] = [];
+            for (let j = 0; j < mazeSize; j++) {
+                maze[i][j] = { x: i, y: j, visited: false, walls: [true, true, true, true] }; // Top, right, bottom, left
+            }
+        }
+
+        function removeWalls(current, next) {
+            const x = current.x - next.x;
+            const y = current.y - next.y;
+
+            if (x === 1) {
+                current.walls[3] = false; // Remove left wall of current
+                next.walls[1] = false; // Remove right wall of next
+            } else if (x === -1) {
+                current.walls[1] = false; // Remove right wall of current
+                next.walls[3] = false; // Remove left wall of next
+            }
+
+            if (y === 1) {
+                current.walls[0] = false; // Remove top wall of current
+                next.walls[2] = false; // Remove bottom wall of next
+            } else if (y === -1) {
+                current.walls[2] = false; // Remove bottom wall of current
+                next.walls[0] = false; // Remove top wall of next
+            }
+        }
+
+        function recursiveBacktracker(x, y) {
+            const stack = [];
+            stack.push(maze[x][y]);
+
+            while (stack.length > 0) {
+                const current = stack.pop();
+                current.visited = true;
+
+                const neighbors = [];
+                if (current.x > 0 && !maze[current.x - 1][current.y].visited) neighbors.push(maze[current.x - 1][current.y]);
+                if (current.x < mazeSize - 1 && !maze[current.x + 1][current.y].visited) neighbors.push(maze[current.x + 1][current.y]);
+                if (current.y > 0 && !maze[current.x][current.y - 1].visited) neighbors.push(maze[current.x][current.y - 1]);
+                if (current.y < mazeSize - 1 && !maze[current.x][current.y + 1].visited) neighbors.push(maze[current.x][current.y + 1]);
+
+                if (neighbors.length > 0) {
+                    stack.push(current);
+
+                    const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    removeWalls(current, next);
+                    stack.push(next);
+                }
+            }
+        }
+
+        recursiveBacktracker(0, 0);
+
+        for (let x = 0; x < mazeSize; x++) {
+            for (let y = 0; y < mazeSize; y++) {
+                const cell = maze[x][y];
+                const baseX = x * cellSize;
+                const baseY = y * cellSize;
+
+                if (cell.walls[0]) {
+                    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                    wall.position.set(baseX, wallHeight / 2, baseY - cellSize / 2);
+                    wall.scale.set(1, 1, 0.1);
+                    scene.add(wall);
+                }
+                if (cell.walls[1]) {
+                    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                    wall.position.set(baseX + cellSize / 2, wallHeight / 2, baseY);
+                    wall.scale.set(0.1, 1, 1);
+                    scene.add(wall);
+                }
+                if (cell.walls[2]) {
+                    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                    wall.position.set(baseX, wallHeight / 2, baseY + cellSize / 2);
+                    wall.scale.set(1, 1, 0.1);
+                    scene.add(wall);
+                }
+                if (cell.walls[3]) {
+                    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                    wall.position.set(baseX - cellSize / 2, wallHeight / 2, baseY);
+                    wall.scale.set(0.1, 1, 1);
+                    scene.add(wall);
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

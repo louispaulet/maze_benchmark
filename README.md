@@ -40,6 +40,7 @@ These steps ensure that each LLM's output is evaluated fairly from a user's pers
 Below are links to the final versions of each LLM-generated maze. Enjoy full navigational controls: use the left click to rotate, right click to translate, and middle click to adjust the zoom level.
 
 Ranked from best to worse:  
+- [GPT-4o **NEW BEST** Maze](https://louispaulet.github.io/maze_benchmark/gpt4o_version.html)
 - [GPT-4 Reference Maze](https://louispaulet.github.io/maze_benchmark/gpt4_maze.html)
 - [LLAMA3-70B Version](https://louispaulet.github.io/maze_benchmark/llama70b_version.html)
 - [GPT4o-open interpreter Version](https://louispaulet.github.io/maze_benchmark/gpt4o_open_interpreter_version.html)
