@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Procedural City Car Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+<!-- Include p5.js library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.10.0/p5.min.js"></script>
+
+
+<!-- Game Code -->
+<script>
+// Global variables
+let car;
+let citySize = 2000;
+let tileSize = 50;
+let tiles = [];
+let roads = [];
+let buildings = [];
+let noiseScale = 0.1;
+
+function setup() {
+    createCanvas(windowWidth, windowHeight);
+    car = new Car();
+    generateCity();
+}
+
+function draw() {
+    background(135, 206, 235); // Sky color
+
+    // Handle input
+    handleInput();
+
+    translate(width / 2 - car.x, height / 2 - car.y);
+    drawCity();
+    car.update();
+    car.show();
+}
+
+// Input handling
+function handleInput() {
+    if (keyIsDown(UP_ARROW)) {
+        car.accelerate(0.2);
+    } else if (keyIsDown(DOWN_ARROW)) {
+        car.accelerate(-0.2);
+    } else {
+        car.applyFriction();
+    }
+
+    if (keyIsDown(LEFT_ARROW)) {
+        car.turn(-0.05);
+    } else if (keyIsDown(RIGHT_ARROW)) {
+        car.turn(0.05);
+    }
+}
+
+// Car class
+class Car {
+    constructor() {
+        this.x = citySize / 2;
+        this.y = citySize / 2;
+        this.angle = 0;
+        this.speed = 0;
+        this.maxSpeed = 5;
+    }
+
+    update() {
+        this.x += this.speed * cos(this.angle);
+        this.y += this.speed * sin(this.angle);
+    }
+
+    show() {
+        push();
+        translate(this.x, this.y);
+        rotate(this.angle);
+        noStroke();
+        fill(255, 0, 0);
+        rectMode(CENTER);
+        rect(0, 0, 30, 15, 5);
+        fill(0);
+        // Wheels
+        rect(-10, -8, 5, 5);
+        rect(10, -8, 5, 5);
+        rect(-10, 8, 5, 5);
+        rect(10, 8, 5, 5);
+        pop();
+    }
+
+    accelerate(amount) {
+        this.speed += amount;
+        this.speed = constrain(this.speed, -this.maxSpeed, this.maxSpeed);
+    }
+
+    applyFriction() {
+        this.speed *= 0.95;
+        if (abs(this.speed) < 0.05) {
+            this.speed = 0;
+        }
+    }
+
+    turn(angle) {
+        if (this.speed !== 0) {
+            let direction = this.speed > 0 ? 1 : -1;
+            this.angle += angle * direction;
+        }
+    }
+}
+
+// Generate procedural city
+function generateCity() {
+    for (let x = 0; x < citySize; x += tileSize) {
+        for (let y = 0; y < citySize; y += tileSize) {
+            let n = noise(x * noiseScale, y * noiseScale);
+            if (n > 0.65) {
+                roads.push({ x, y });
+            } else if (n > 0.5) {
+                buildings.push({ x, y });
+            } else {
+                tiles.push({ x, y });
+            }
+        }
+    }
+}
+
+// Draw the city
+function drawCity() {
+    // Draw grass tiles
+    noStroke();
+    for (let tile of tiles) {
+        fill(34, 139, 34); // Grass color
+        rect(tile.x, tile.y, tileSize, tileSize);
+    }
+
+    // Draw road tiles
+    for (let road of roads) {
+        fill(50);
+        rect(road.x, road.y, tileSize, tileSize);
+        // Road markings
+        stroke(255, 255, 0);
+        strokeWeight(2);
+        line(
+            road.x + tileSize / 2,
+            road.y,
+            road.x + tileSize / 2,
+            road.y + tileSize
+        );
+        noStroke();
+    }
+
+    // Draw buildings
+    for (let building of buildings) {
+        fill(169, 169, 169);
+        rect(building.x, building.y, tileSize, tileSize);
+        // Add windows
+        fill(255, 215, 0);
+        rect(building.x + 10, building.y + 10, 10, 10);
+        rect(building.x + 30, building.y + 10, 10, 10);
+        rect(building.x + 10, building.y + 30, 10, 10);
+        rect(building.x + 30, building.y + 30, 10, 10);
+    }
+}
+
+// Handle window resizing
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+
+</body>
+</html>
