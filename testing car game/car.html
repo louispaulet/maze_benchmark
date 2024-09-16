@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Procedural City Car Game</title>
+    <title>Procedural Infinite City Car Game</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -13,22 +13,16 @@
 <!-- Include p5.js library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.10.0/p5.min.js"></script>
 
-
 <!-- Game Code -->
 <script>
 // Global variables
 let car;
-let citySize = 2000;
 let tileSize = 50;
-let tiles = [];
-let roads = [];
-let buildings = [];
-let noiseScale = 0.1;
+let viewRange = 10; // Number of tiles to display around the car
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
     car = new Car();
-    generateCity();
 }
 
 function draw() {
@@ -63,8 +57,8 @@ function handleInput() {
 // Car class
 class Car {
     constructor() {
-        this.x = citySize / 2;
-        this.y = citySize / 2;
+        this.x = 0;
+        this.y = 0;
         this.angle = 0;
         this.speed = 0;
         this.maxSpeed = 5;
@@ -112,58 +106,93 @@ class Car {
     }
 }
 
-// Generate procedural city
-function generateCity() {
-    for (let x = 0; x < citySize; x += tileSize) {
-        for (let y = 0; y < citySize; y += tileSize) {
-            let n = noise(x * noiseScale, y * noiseScale);
-            if (n > 0.65) {
-                roads.push({ x, y });
-            } else if (n > 0.5) {
-                buildings.push({ x, y });
-            } else {
-                tiles.push({ x, y });
-            }
+// Draw the infinite city
+function drawCity() {
+    let startX = floor((car.x - viewRange * tileSize) / tileSize) * tileSize;
+    let endX = floor((car.x + viewRange * tileSize) / tileSize) * tileSize;
+    let startY = floor((car.y - viewRange * tileSize) / tileSize) * tileSize;
+    let endY = floor((car.y + viewRange * tileSize) / tileSize) * tileSize;
+
+    for (let x = startX; x <= endX; x += tileSize) {
+        for (let y = startY; y <= endY; y += tileSize) {
+            let tileType = getTileType(x, y);
+            drawTile(x, y, tileType);
         }
     }
 }
 
-// Draw the city
-function drawCity() {
-    // Draw grass tiles
-    noStroke();
-    for (let tile of tiles) {
-        fill(34, 139, 34); // Grass color
-        rect(tile.x, tile.y, tileSize, tileSize);
-    }
+// Determine the type of tile based on position
+function getTileType(x, y) {
+    // Generate main roads every 5 tiles
+    let mainRoadInterval = 5 * tileSize;
+    let sideRoadInterval = 2 * tileSize;
 
-    // Draw road tiles
-    for (let road of roads) {
-        fill(50);
-        rect(road.x, road.y, tileSize, tileSize);
+    if (x % mainRoadInterval === 0 || y % mainRoadInterval === 0) {
+        return 'mainRoad';
+    } else if (x % sideRoadInterval === 0 || y % sideRoadInterval === 0) {
+        return 'sideRoad';
+    } else {
+        // Use noise to determine if it's a building, tree, or grass
+        let n = noise(x * 0.001, y * 0.001);
+        if (n > 0.7) {
+            return 'building';
+        } else if (n > 0.5) {
+            return 'tree';
+        } else {
+            return 'grass';
+        }
+    }
+}
+
+// Draw a tile at a given position based on its type
+function drawTile(x, y, type) {
+    push();
+    translate(x, y);
+
+    if (type === 'mainRoad') {
+        // Draw main road
+        fill(60);
+        rect(0, 0, tileSize, tileSize);
         // Road markings
         stroke(255, 255, 0);
         strokeWeight(2);
-        line(
-            road.x + tileSize / 2,
-            road.y,
-            road.x + tileSize / 2,
-            road.y + tileSize
-        );
+        if (x % (5 * tileSize) === 0) {
+            // Vertical road
+            line(tileSize / 2, 0, tileSize / 2, tileSize);
+        } else {
+            // Horizontal road
+            line(0, tileSize / 2, tileSize, tileSize / 2);
+        }
         noStroke();
-    }
-
-    // Draw buildings
-    for (let building of buildings) {
+    } else if (type === 'sideRoad') {
+        // Draw side road
+        fill(80);
+        rect(0, 0, tileSize, tileSize);
+    } else if (type === 'building') {
+        // Draw building
         fill(169, 169, 169);
-        rect(building.x, building.y, tileSize, tileSize);
+        rect(0, 0, tileSize, tileSize);
         // Add windows
         fill(255, 215, 0);
-        rect(building.x + 10, building.y + 10, 10, 10);
-        rect(building.x + 30, building.y + 10, 10, 10);
-        rect(building.x + 10, building.y + 30, 10, 10);
-        rect(building.x + 30, building.y + 30, 10, 10);
+        let windows = floor(random(2, 5));
+        for (let i = 0; i < windows; i++) {
+            for (let j = 0; j < windows; j++) {
+                rect(5 + i * 10, 5 + j * 10, 5, 5);
+            }
+        }
+    } else if (type === 'tree') {
+        // Draw tree
+        fill(34, 139, 34);
+        ellipse(tileSize / 2, tileSize / 2, tileSize / 1.5, tileSize / 1.5);
+        fill(139, 69, 19);
+        rect(tileSize / 2 - 5, tileSize / 2, 10, tileSize / 2);
+    } else {
+        // Draw grass
+        fill(34, 139, 34);
+        rect(0, 0, tileSize, tileSize);
     }
+
+    pop();
 }
 
 // Handle window resizing
