@@ -64,7 +64,21 @@
   <!-- p5.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.10.0/p5.min.js"></script>
   <script>
-    // Define block types with colors
+    /*******************************
+     * 1. Game Keys Configuration *
+     *******************************/
+    const GAME_KEYS = {
+      MOVE_FORWARD: 'w',
+      MOVE_BACKWARD: 's',
+      MOVE_LEFT: 'a',
+      MOVE_RIGHT: 'd',
+      MOVE_UP: ' ',
+      MOVE_DOWN: 'shift'
+    };
+
+    /*******************************
+     * 2. Block Types Definition   *
+     *******************************/
     const BLOCK_TYPES = {
       grass: { color: [100, 200, 100], name: 'grass' },
       stone: { color: [128, 128, 128], name: 'stone' },
@@ -76,8 +90,10 @@
     // DOM Elements for block selection
     const blockButtons = {};
 
-    // Initialize blocks as a Map with key "x,y,z" and value block type
-    let blocks = new Map();
+    /*******************************
+     * 3. Game State Variables     *
+     *******************************/
+    let blocks = new Map(); // Initialize blocks as a Map with key "x,y,z" and value block type
     const blockSize = 50;
 
     // Camera variables
@@ -98,7 +114,9 @@
     // Animal objects
     let animals = [];
 
-    // Animal class to represent chickens and cows
+    /*******************************
+     * 4. Animal Class Definition  *
+     *******************************/
     class Animal {
       constructor(type, x, y, z) {
         this.type = type; // 'chicken' or 'cow'
@@ -146,6 +164,9 @@
       }
     }
 
+    /*******************************
+     * 5. p5.js Setup Function    *
+     *******************************/
     function setup() {
       createCanvas(windowWidth, windowHeight, WEBGL);
       // Initialize procedural terrain around the starting point
@@ -160,6 +181,9 @@
       initializeAnimals();
     }
 
+    /*******************************
+     * 6. p5.js Draw Function     *
+     *******************************/
     function draw() {
       background(135, 206, 235); // Sky blue
 
@@ -203,38 +227,50 @@
       }
     }
 
+    /*******************************
+     * 7. Input Handling          *
+     *******************************/
     function keyPressed() {
-      keys[key.toLowerCase()] = true;
+      const keyLower = key.toLowerCase();
+      for (let action in GAME_KEYS) {
+        if (GAME_KEYS[action] === keyLower) {
+          keys[action] = true;
+        }
+      }
     }
 
     function keyReleased() {
-      keys[key.toLowerCase()] = false;
+      const keyLower = key.toLowerCase();
+      for (let action in GAME_KEYS) {
+        if (GAME_KEYS[action] === keyLower) {
+          keys[action] = false;
+        }
+      }
     }
 
-    //movement keys are setup here
     function handleMovement() {
       let speed = 5;
       let dy = 0; // Vertical movement
 
       // Relative movement based on yaw
-      if (keys['w']) {
+      if (keys['MOVE_FORWARD']) {
         camX += sin(yaw) * speed;
         camZ += -cos(yaw) * speed;
       }
-      if (keys['s']) {
+      if (keys['MOVE_BACKWARD']) {
         camX -= sin(yaw) * speed;
         camZ -= -cos(yaw) * speed;
       }
-      if (keys['d']) {
+      if (keys['MOVE_RIGHT']) {
         camX -= cos(yaw) * speed;
         camZ -= sin(yaw) * speed;
       }
-      if (keys['a']) {
+      if (keys['MOVE_LEFT']) {
         camX += cos(yaw) * speed;
         camZ += sin(yaw) * speed;
       }
-      if (keys[' ']) dy += speed; 
-      if (keys['shift']) dy -= speed; 
+      if (keys['MOVE_UP']) dy += speed; 
+      if (keys['MOVE_DOWN']) dy -= speed; 
 
       camY += dy;
 
@@ -242,6 +278,9 @@
       generateTerrain(camX, camZ);
     }
 
+    /*******************************
+     * 8. Camera Management       *
+     *******************************/
     function updateCamera() {
       // Calculate camera direction
       let dirX = sin(yaw) * cos(pitch);
@@ -276,6 +315,9 @@
       }
     }
 
+    /*******************************
+     * 9. Block Manipulation      *
+     *******************************/
     // Updated addBlock function with default type
     function addBlock(x, y, z, type = currentBlockType) {
       const key = `${x},${y},${z}`;
@@ -345,10 +387,16 @@
       }
     }
 
+    /*******************************
+     * 10. Window Resize Handler  *
+     *******************************/
     function windowResized() {
       resizeCanvas(windowWidth, windowHeight);
     }
 
+    /*******************************
+     * 11. Terrain Generation      *
+     *******************************/
     // Procedural Terrain Generation using Perlin Noise
     function generateTerrain(camX, camZ) {
       const terrainSize = loadRadius;
@@ -406,6 +454,9 @@
       }
     }
 
+    /*******************************
+     * 12. Visibility Check        *
+     *******************************/
     // Check if a block has at least one exposed face
     function isBlockVisible(x, y, z) {
       // Directions: top, bottom, left, right, front, back
@@ -426,6 +477,9 @@
       return false; // All faces are occluded
     }
 
+    /*******************************
+     * 13. Player Position Setup   *
+     *******************************/
     // Ensure the player starts on the surface
     function setPlayerToSurface() {
       // Find the highest y for the center (x=0, z=0)
@@ -441,6 +495,9 @@
       camera(camX, camY, camZ, camX, camY - blockSize, camZ - blockSize, 0, -1, 0);
     }
 
+    /*******************************
+     * 14. Animals Initialization  *
+     *******************************/
     // Initialize animals and add them to the animals array
     function initializeAnimals() {
       // Add a few chickens and cows at random positions
@@ -465,6 +522,9 @@
       }
     }
 
+    /*******************************
+     * 15. Utility Functions       *
+     *******************************/
     // Get the maximum y for given x and z
     function getMaxY(x, z) {
       let maxY = -Infinity;
@@ -477,6 +537,9 @@
       return maxY === -Infinity ? 0 : maxY;
     }
 
+    /*******************************
+     * 16. Block Selector Setup    *
+     *******************************/
     // Setup Block Selector UI
     function setupBlockSelector() {
       const selector = document.getElementById('block-selector');
