@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Enhanced and Optimized Minecraft Clone with p5.js</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #instructions {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      z-index: 10;
+      max-width: 300px;
+    }
+    #block-selector {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      display: flex;
+      gap: 10px;
+      z-index: 10;
+    }
+    .block-button {
+      width: 40px;
+      height: 40px;
+      border: 2px solid white;
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-size: cover;
+    }
+    .block-button.selected {
+      border: 4px solid yellow;
+    }
+  </style>
+</head>
+<body>
+  <div id="instructions">
+    <h3>Controls:</h3>
+    <p><strong>W/A/S/D:</strong> Move Forward/Left/Backward/Right</p>
+    <p><strong>Spacebar:</strong> Move Up</p>
+    <p><strong>Shift:</strong> Move Down</p>
+    <p><strong>Mouse Drag:</strong> Look Around</p>
+    <p><strong>Left Click:</strong> Remove Block</p>
+    <p><strong>Right Click:</strong> Add Block</p>
+    <p><strong>Scroll:</strong> Change Block Interaction Distance</p>
+    <hr>
+    <h4>Select Block Type:</h4>
+    <div id="block-selector">
+      <div class="block-button selected" id="grass" title="Grass"></div>
+      <div class="block-button" id="stone" title="Stone"></div>
+      <div class="block-button" id="dirt" title="Dirt"></div>
+    </div>
+  </div>
+
+  <!-- p5.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.10.0/p5.min.js"></script>
+  <script>
+    /*******************************
+     * 1. Game Keys Configuration *
+     *******************************/
+    const GAME_KEYS = {
+      MOVE_FORWARD: 'w',
+      MOVE_BACKWARD: 's',
+      MOVE_LEFT: 'a',
+      MOVE_RIGHT: 'd',
+      MOVE_UP: ' ',
+      MOVE_DOWN: 'shift'
+    };
+
+    /*******************************
+     * 2. Block Types Definition   *
+     *******************************/
+    const BLOCK_TYPES = {
+      grass: { color: [100, 200, 100], name: 'grass' },
+      stone: { color: [128, 128, 128], name: 'stone' },
+      dirt: { color: [155, 118, 83], name: 'dirt' }
+    };
+
+    let currentBlockType = 'grass'; // Default block type
+
+    // DOM Elements for block selection
+    const blockButtons = {};
+
+    /*******************************
+     * 3. Game State Variables     *
+     *******************************/
+    let blocks = new Map(); // Initialize blocks as a Map with key "x,y,z" and value block type
+    const blockSize = 50;
+
+    // Camera variables
+    let camX = 0, camY = 0, camZ = 0;
+    let yaw = 0, pitch = 0;
+
+    // Movement and interaction variables
+    let keys = {};
+    let maxDistance = 500; // Maximum distance to load blocks
+    const loadRadius = 10; // Radius in blocks to load around the player
+
+    // Terrain generation variables
+    const noiseScale = 0.1;
+
+    // To keep track of generated terrain
+    let terrainGenerated = new Set();
+
+    // Animal objects
+    let animals = [];
+
+    /*******************************
+     * 4. Animal Class Definition  *
+     *******************************/
+    class Animal {
+      constructor(type, x, y, z) {
+        this.type = type; // 'chicken' or 'cow'
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.speed = 1.5;
+        this.direction = p5.Vector.random2D(); // Random initial direction
+      }
+
+      update() {
+        // Simple movement: move forward, occasionally change direction
+        if (random(1) < 0.01) { // 1% chance to change direction each frame
+          this.direction = p5.Vector.random2D();
+        }
+
+        this.x += this.direction.x * this.speed;
+        this.z += this.direction.y * this.speed;
+
+        // Boundary conditions (within terrain limits)
+        const terrainLimit = loadRadius * 2;
+        if (abs(this.x) > terrainLimit * blockSize || abs(this.z) > terrainLimit * blockSize) {
+          this.direction.mult(-1); // Reverse direction if out of bounds
+        }
+
+        // Ensure animals stay on the surface
+        const blockX = Math.floor(this.x / blockSize);
+        const blockZ = Math.floor(this.z / blockSize);
+        let maxY = getMaxY(blockX, blockZ);
+        this.y = (maxY + 1) * blockSize; // Position just above the surface
+      }
+
+      draw() {
+        push();
+        translate(this.x, this.y, this.z);
+        noStroke();
+        if (this.type === 'chicken') {
+          fill(255, 255, 255); // White color for chicken
+          sphere(blockSize / 3);
+        } else if (this.type === 'cow') {
+          fill(150, 75, 0); // Brown color for cow
+          sphere(blockSize / 2);
+        }
+        pop();
+      }
+    }
+
+    /*******************************
+     * 5. p5.js Setup Function    *
+     *******************************/
+    function setup() {
+      createCanvas(windowWidth, windowHeight, WEBGL);
+      // Initialize procedural terrain around the starting point
+      generateTerrain(camX, camZ);
+      // Prevent context menu on right-click
+      document.oncontextmenu = () => false;
+      // Setup block selector buttons
+      setupBlockSelector();
+      // Position player on the surface
+      setPlayerToSurface();
+      // Initialize animals
+      initializeAnimals();
+    }
+
+    /*******************************
+     * 6. p5.js Draw Function     *
+     *******************************/
+    function draw() {
+      background(135, 206, 235); // Sky blue
+
+      handleMovement();
+      updateCamera();
+
+      // Basic lighting
+      ambientLight(150);
+      directionalLight(255, 255, 255, 0, -1, -1);
+
+      // Draw all visible blocks
+      for (let [key, type] of blocks) {
+        let [x, y, z] = key.split(',').map(Number);
+        // Occlusion Culling: Render only if at least one face is exposed
+        if (isBlockVisible(x, y, z)) {
+          push();
+          translate(x * blockSize, y * blockSize, z * blockSize);
+          fill(BLOCK_TYPES[type].color);
+          box(blockSize);
+          pop();
+        }
+      }
+
+      // Draw animals
+      for (let animal of animals) {
+        animal.update();
+        animal.draw();
+      }
+
+      // Highlight targeted block
+      let target = getIntersectedBlock();
+      if (target) {
+        let [x, y, z, face] = target;
+        push();
+        translate(x * blockSize, y * blockSize, z * blockSize);
+        noFill();
+        stroke(255, 0, 0);
+        strokeWeight(4);
+        box(blockSize);
+        pop();
+      }
+    }
+
+    /*******************************
+     * 7. Input Handling          *
+     *******************************/
+    function keyPressed() {
+      const keyLower = key.toLowerCase();
+      for (let action in GAME_KEYS) {
+        if (GAME_KEYS[action] === keyLower) {
+          keys[action] = true;
+        }
+      }
+    }
+
+    function keyReleased() {
+      const keyLower = key.toLowerCase();
+      for (let action in GAME_KEYS) {
+        if (GAME_KEYS[action] === keyLower) {
+          keys[action] = false;
+        }
+      }
+    }
+
+    function handleMovement() {
+      let speed = 5;
+      let dy = 0; // Vertical movement
+
+      // Relative movement based on yaw
+      if (keys['MOVE_FORWARD']) {
+        camX += sin(yaw) * speed;
+        camZ += -cos(yaw) * speed;
+      }
+      if (keys['MOVE_BACKWARD']) {
+        camX -= sin(yaw) * speed;
+        camZ -= -cos(yaw) * speed;
+      }
+      if (keys['MOVE_RIGHT']) {
+        camX -= cos(yaw) * speed;
+        camZ -= sin(yaw) * speed;
+      }
+      if (keys['MOVE_LEFT']) {
+        camX += cos(yaw) * speed;
+        camZ += sin(yaw) * speed;
+      }
+      if (keys['MOVE_UP']) dy += speed; 
+      if (keys['MOVE_DOWN']) dy -= speed; 
+
+      camY += dy;
+
+      // Generate terrain around new position
+      generateTerrain(camX, camZ);
+    }
+
+    /*******************************
+     * 8. Camera Management       *
+     *******************************/
+    function updateCamera() {
+      // Calculate camera direction
+      let dirX = sin(yaw) * cos(pitch);
+      let dirY = sin(pitch);
+      let dirZ = -cos(yaw) * cos(pitch);
+      camera(camX, camY, camZ, camX + dirX, camY + dirY, camZ + dirZ, 0, -1, 0);
+    }
+
+    function mouseDragged() {
+      let sensitivity = 0.005;
+      let deltaX = movedX * sensitivity;
+      let deltaY = movedY * sensitivity;
+
+      yaw += -deltaX;
+      pitch += -deltaY;
+
+      // Limit pitch to prevent flipping
+      pitch = constrain(pitch, -HALF_PI + 0.01, HALF_PI - 0.01);
+    }
+
+    function mouseWheel(event) {
+      // Adjust max distance based on scroll
+      maxDistance += event.delta;
+      maxDistance = constrain(maxDistance, 100, 1000);
+    }
+
+    function mousePressed() {
+      if (mouseButton === LEFT) {
+        removeBlockAtMouse();
+      } else if (mouseButton === RIGHT) {
+        addBlockAtMouse();
+      }
+    }
+
+    /*******************************
+     * 9. Block Manipulation      *
+     *******************************/
+    // Updated addBlock function with default type
+    function addBlock(x, y, z, type = currentBlockType) {
+      const key = `${x},${y},${z}`;
+      if (!blocks.has(key)) {
+        blocks.set(key, type);
+      }
+    }
+
+    function removeBlock(x, y, z) {
+      const key = `${x},${y},${z}`;
+      blocks.delete(key);
+    }
+
+    function addBlockAtMouse() {
+      let intersect = getIntersectedBlock();
+      if (intersect) {
+        let [x, y, z, face] = intersect;
+        // Add block adjacent to the face clicked
+        switch(face) {
+          case 'top': y -= 1; break;
+          case 'bottom': y += 1; break;
+          case 'left': x += 1; break;
+          case 'right': x -= 1; break;
+          case 'front': z += 1; break;
+          case 'back': z -= 1; break;
+        }
+        addBlock(x, y, z); // type defaults to currentBlockType
+      }
+    }
+
+    function removeBlockAtMouse() {
+      let intersect = getIntersectedBlock();
+      if (intersect) {
+        let [x, y, z] = intersect;
+        removeBlock(x, y, z);
+      }
+    }
+
+    function getIntersectedBlock() {
+      // Raycasting: Cast a ray from the camera position in the direction it's facing
+      let dir = createVector(sin(yaw) * cos(pitch), sin(pitch), -cos(yaw) * cos(pitch));
+      let camPos = createVector(camX, camY, camZ);
+      let step = blockSize / 2;
+      for (let d = 0; d < maxDistance; d += step) {
+        let pos = p5.Vector.add(camPos, p5.Vector.mult(dir, d));
+        let x = Math.floor(pos.x / blockSize + 0.5);
+        let y = Math.floor(pos.y / blockSize + 0.5);
+        let z = Math.floor(pos.z / blockSize + 0.5);
+        const key = `${x},${y},${z}`;
+        if (blocks.has(key)) {
+          // Determine which face is hit based on the direction
+          let face = getFace(dir);
+          return [x, y, z, face];
+        }
+      }
+      return null;
+    }
+
+    function getFace(dir) {
+      const absDir = createVector(abs(dir.x), abs(dir.y), abs(dir.z));
+      if (absDir.x > absDir.y && absDir.x > absDir.z) {
+        return dir.x > 0 ? 'left' : 'right';
+      } else if (absDir.y > absDir.x && absDir.y > absDir.z) {
+        return dir.y > 0 ? 'top' : 'bottom';
+      } else {
+        return dir.z > 0 ? 'front' : 'back';
+      }
+    }
+
+    /*******************************
+     * 10. Window Resize Handler  *
+     *******************************/
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+
+    /*******************************
+     * 11. Terrain Generation      *
+     *******************************/
+    // Procedural Terrain Generation using Perlin Noise
+    function generateTerrain(camX, camZ) {
+      const terrainSize = loadRadius;
+      const centerX = Math.floor(camX / blockSize);
+      const centerZ = Math.floor(camZ / blockSize);
+
+      for (let x = centerX - terrainSize; x <= centerX + terrainSize; x++) {
+        for (let z = centerZ - terrainSize; z <= centerZ + terrainSize; z++) {
+          const keyXZ = `${x},${z}`;
+          if (!terrainGenerated.has(keyXZ)) {
+            // Generate height using Perlin noise
+            let height = floor(noise(x * noiseScale, z * noiseScale) * 10) + 5; // Heights between 5 and 15
+            for (let y = 0; y <= height; y++) {
+              let blockType;
+              if (y === height) {
+                blockType = 'grass';
+              } else if (y > height - 3) {
+                blockType = 'dirt';
+              } else {
+                blockType = 'stone';
+              }
+              addBlock(x, y, z, blockType);
+            }
+            terrainGenerated.add(keyXZ);
+          }
+        }
+      }
+
+      // Optional: Generate distant mountains (commented out for performance)
+      // Uncomment the following line if you want to include distant mountains
+      // generateMountains(centerX, centerZ);
+    }
+
+    function generateMountains(centerX, centerZ) {
+      const mountainSize = 50; // Number of blocks in each direction for mountains
+      const noiseScaleMountain = 0.05;
+      for (let x = centerX - mountainSize; x <= centerX + mountainSize; x++) {
+        for (let z = centerZ - mountainSize; z <= centerZ + mountainSize; z++) {
+          // Offset to place mountains further away
+          let distance = sqrt((x - centerX) * (x - centerX) + (z - centerZ) * (z - centerZ));
+          if (distance < mountainSize / 2 || distance > mountainSize * 1.5) continue; // Limit mountains to a specific area
+          let height = floor(noise(x * noiseScaleMountain, z * noiseScaleMountain) * 20) + 10; // Heights between 10 and 30
+          for (let y = 0; y <= height; y++) {
+            let blockType;
+            if (y === height) {
+              blockType = 'stone';
+            } else if (y > height - 5) {
+              blockType = 'dirt';
+            } else {
+              blockType = 'stone';
+            }
+            addBlock(x, y, z, blockType);
+          }
+        }
+      }
+    }
+
+    /*******************************
+     * 12. Visibility Check        *
+     *******************************/
+    // Check if a block has at least one exposed face
+    function isBlockVisible(x, y, z) {
+      // Directions: top, bottom, left, right, front, back
+      const directions = [
+        [0, 1, 0],  // top
+        [0, -1, 0], // bottom
+        [-1, 0, 0], // left
+        [1, 0, 0],  // right
+        [0, 0, 1],  // front
+        [0, 0, -1]  // back
+      ];
+      for (let dir of directions) {
+        const neighborKey = `${x + dir[0]},${y + dir[1]},${z + dir[2]}`;
+        if (!blocks.has(neighborKey)) {
+          return true; // At least one face is exposed
+        }
+      }
+      return false; // All faces are occluded
+    }
+
+    /*******************************
+     * 13. Player Position Setup   *
+     *******************************/
+    // Ensure the player starts on the surface
+    function setPlayerToSurface() {
+      // Find the highest y for the center (x=0, z=0)
+      let maxY = -Infinity;
+      for (let [key, type] of blocks) {
+        let [x, y, z] = key.split(',').map(Number);
+        if (x === 0 && z === 0 && y > maxY) {
+          maxY = y;
+        }
+      }
+      camY = (maxY + 1) * blockSize; // Position player just above the surface
+      // Set the camera's initial direction to look slightly downward
+      camera(camX, camY, camZ, camX, camY - blockSize, camZ - blockSize, 0, -1, 0);
+    }
+
+    /*******************************
+     * 14. Animals Initialization  *
+     *******************************/
+    // Initialize animals and add them to the animals array
+    function initializeAnimals() {
+      // Add a few chickens and cows at random positions
+      for (let i = 0; i < 5; i++) {
+        let x = floor(random(-loadRadius * blockSize, loadRadius * blockSize));
+        let z = floor(random(-loadRadius * blockSize, loadRadius * blockSize));
+        let blockX = floor(x / blockSize);
+        let blockZ = floor(z / blockSize);
+        let maxY = getMaxY(blockX, blockZ);
+        let y = (maxY + 1) * blockSize; // Position just above the surface
+        animals.push(new Animal('chicken', x, y, z));
+      }
+
+      for (let i = 0; i < 3; i++) {
+        let x = floor(random(-loadRadius * blockSize, loadRadius * blockSize));
+        let z = floor(random(-loadRadius * blockSize, loadRadius * blockSize));
+        let blockX = floor(x / blockSize);
+        let blockZ = floor(z / blockSize);
+        let maxY = getMaxY(blockX, blockZ);
+        let y = (maxY + 1) * blockSize; // Position just above the surface
+        animals.push(new Animal('cow', x, y, z));
+      }
+    }
+
+    /*******************************
+     * 15. Utility Functions       *
+     *******************************/
+    // Get the maximum y for given x and z
+    function getMaxY(x, z) {
+      let maxY = -Infinity;
+      for (let [key, type] of blocks) {
+        let [bx, by, bz] = key.split(',').map(Number);
+        if (bx === x && bz === z && by > maxY) {
+          maxY = by;
+        }
+      }
+      return maxY === -Infinity ? 0 : maxY;
+    }
+
+    /*******************************
+     * 16. Block Selector Setup    *
+     *******************************/
+    // Setup Block Selector UI
+    function setupBlockSelector() {
+      const selector = document.getElementById('block-selector');
+      for (let type in BLOCK_TYPES) {
+        let button = document.getElementById(type);
+        button.style.backgroundColor = `rgb(${BLOCK_TYPES[type].color.join(',')})`;
+        blockButtons[type] = button;
+        button.addEventListener('click', () => {
+          currentBlockType = type;
+          updateBlockSelectorUI();
+        });
+      }
+    }
+
+    function updateBlockSelectorUI() {
+      for (let type in blockButtons) {
+        if (type === currentBlockType) {
+          blockButtons[type].classList.add('selected');
+        } else {
+          blockButtons[type].classList.remove('selected');
+        }
+      }
+    }
+  </script>
+</body>
+</html>
