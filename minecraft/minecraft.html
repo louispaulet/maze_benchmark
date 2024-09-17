@@ -217,10 +217,23 @@
       let speed = 5;
       let dy = 0; // Vertical movement
 
-      if (keys['w']) camZ -= speed;
-      if (keys['s']) camZ += speed;
-      if (keys['a']) camX -= speed;
-      if (keys['d']) camX += speed;
+      // Relative movement based on yaw
+      if (keys['w']) {
+        camX += sin(yaw) * speed;
+        camZ += -cos(yaw) * speed;
+      }
+      if (keys['s']) {
+        camX -= sin(yaw) * speed;
+        camZ -= -cos(yaw) * speed;
+      }
+      if (keys['a']) {
+        camX -= cos(yaw) * speed;
+        camZ -= sin(yaw) * speed;
+      }
+      if (keys['d']) {
+        camX += cos(yaw) * speed;
+        camZ += sin(yaw) * speed;
+      }
       if (keys[' ']) dy -= speed; // Move up
       if (keys['shift']) dy += speed; // Move down
 
