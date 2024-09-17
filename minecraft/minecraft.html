@@ -206,10 +206,11 @@
       }
     }
 
-    function addBlock(x, y, z) {
+    // Updated addBlock function with default type
+    function addBlock(x, y, z, type = currentBlockType) {
       const key = `${x},${y},${z}`;
       if (!blocks.has(key)) {
-        blocks.set(key, currentBlockType);
+        blocks.set(key, type);
       }
     }
 
@@ -231,7 +232,7 @@
           case 'front': z += 1; break;
           case 'back': z -= 1; break;
         }
-        addBlock(x, y, z);
+        addBlock(x, y, z); // type defaults to currentBlockType
       }
     }
 
@@ -286,8 +287,8 @@
 
       for (let x = centerX - terrainSize; x <= centerX + terrainSize; x++) {
         for (let z = centerZ - terrainSize; z <= centerZ + terrainSize; z++) {
-          const key = `${x},${z}`;
-          if (!terrainGenerated.has(key)) {
+          const keyXZ = `${x},${z}`;
+          if (!terrainGenerated.has(keyXZ)) {
             // Generate height using Perlin noise
             let height = floor(noise(x * noiseScale, z * noiseScale) * 10) + 5; // Heights between 5 and 15
             for (let y = 0; y <= height; y++) {
@@ -301,12 +302,12 @@
               }
               addBlock(x, y, z, blockType);
             }
-            terrainGenerated.add(key);
+            terrainGenerated.add(keyXZ);
           }
         }
       }
 
-      // Generate distant mountains (optional, can be adjusted or removed for performance)
+      // Optional: Generate distant mountains (commented out for performance)
       // Uncomment the following line if you want to include distant mountains
       // generateMountains(centerX, centerZ);
     }
@@ -332,13 +333,6 @@
             addBlock(x, y, z, blockType);
           }
         }
-      }
-    }
-
-    function addBlock(x, y, z, type) {
-      const key = `${x},${y},${z}`;
-      if (!blocks.has(key)) {
-        blocks.set(key, type);
       }
     }
 
@@ -373,7 +367,8 @@
         }
       }
       camY = (maxY + 1) * blockSize; // Position player just above the surface
-      camera(camX, camY, camZ, camX, camY - blockSize, camZ - blockSize, 0, 1, 0);
+      // Set the camera's initial direction to look slightly downward
+      camera(camX, camY, camZ, camX, camY - blockSize, camZ - blockSize, 0, -1, 0);
     }
 
     // Setup Block Selector UI
