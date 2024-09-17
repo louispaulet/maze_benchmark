@@ -78,3 +78,8 @@ Testing GPT-o1 by making a small procedural car game.
 Testing GPT-o1 by making a small AGAR.IO clone.  
 
 [AGAR.IO clone](./agario/agario.html).
+
+### Minecraft clone  
+
+Testing GPT-o1 by making a Minecraft clone.  
+[Minecraft clone](./minecraft/minecraft.html)
