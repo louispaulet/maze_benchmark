@@ -42,7 +42,10 @@ function setup() {
 function startNewGame() {
   gameOver = false;
   keys = {};
-  restartButton = null;
+  if (restartButton) {
+    restartButton.remove();
+    restartButton = null;
+  }
 
   let shuffledNames = shuffle(funnyNames.slice());
   let playerName = shuffledNames.pop() || "Player";
@@ -92,16 +95,11 @@ function draw() {
     text('Game Over', width / 2, height / 2 - 50);
 
     if (!restartButton) {
-      restartButton = createButton('New Game');
+      restartButton = createButton('Try Again');
       restartButton.position(width / 2 - 50, height / 2);
       restartButton.mousePressed(startNewGame);
     }
     return;
-  } else {
-    if (restartButton) {
-      restartButton.remove();
-      restartButton = null;
-    }
   }
 
   background(200);
@@ -170,7 +168,7 @@ function draw() {
     for (let j = enemies.length - 1; j >= 0; j--) {
       if (i != j) {
         let otherEnemy = enemies[j];
-        if (enemy.eats(otherEnemy) && enemy.r > otherEnemy.r * 1.1) {
+        if (enemy.eats(otherEnemy)) {
           // Enemy eats other enemy
           let sumArea = PI * enemy.r * enemy.r + PI * otherEnemy.r * otherEnemy.r;
           enemy.r = sqrt(sumArea / PI);
@@ -188,16 +186,15 @@ function draw() {
   for (let i = enemies.length - 1; i >= 0; i--) {
     let enemy = enemies[i];
     if (player.eats(enemy)) {
-      if (player.r > enemy.r * 1.1) {
-        // Player eats enemy
-        let sumArea = PI * player.r * player.r + PI * enemy.r * enemy.r;
-        player.r = sqrt(sumArea / PI);
+      // Player eats enemy
+      let sumArea = PI * player.r * player.r + PI * enemy.r * enemy.r;
+      player.r = sqrt(sumArea / PI);
 
-        enemies.splice(i, 1);
-      } else if (enemy.r > player.r * 1.1) {
-        // Enemy eats player
-        gameOver = true;
-      }
+      enemies.splice(i, 1);
+    } else if (enemy.eats(player)) {
+      // Enemy eats player
+      gameOver = true;
+      break; // Exit the loop
     }
   }
 
@@ -285,7 +282,7 @@ class Cell {
 
   eats(other) {
     let d = p5.Vector.dist(this.pos, other.pos);
-    if (d < this.r + other.r && this.r > other.r * 0.9) {
+    if (d < this.r && this.r > other.r * 1.1) {
       return true;
     } else {
       return false;
@@ -307,7 +304,6 @@ class EnemyCell extends Cell {
       direction.normalize();
       this.vel = direction.mult(1.5);
     } else {
-      // Enemy is smaller or similar size
       if (distanceToPlayer < 200) {
         // Run away from the player
         let direction = p5.Vector.sub(this.pos, player.pos);
