@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Optimized Minecraft Clone with p5.js</title>
+  <title>Enhanced and Optimized Minecraft Clone with p5.js</title>
   <style>
     body { margin: 0; overflow: hidden; }
     canvas { display: block; }
@@ -45,11 +45,13 @@
 <body>
   <div id="instructions">
     <h3>Controls:</h3>
-    <p><strong>W/A/S/D:</strong> Move</p>
+    <p><strong>W/A/S/D:</strong> Move Forward/Left/Backward/Right</p>
+    <p><strong>Spacebar:</strong> Move Up</p>
+    <p><strong>Shift:</strong> Move Down</p>
     <p><strong>Mouse Drag:</strong> Look Around</p>
     <p><strong>Left Click:</strong> Remove Block</p>
     <p><strong>Right Click:</strong> Add Block</p>
-    <p><strong>Scroll:</strong> Change Block Distance</p>
+    <p><strong>Scroll:</strong> Change Block Interaction Distance</p>
     <hr>
     <h4>Select Block Type:</h4>
     <div id="block-selector">
@@ -93,6 +95,59 @@
     // To keep track of generated terrain
     let terrainGenerated = new Set();
 
+    // Animal objects
+    let animals = [];
+
+    // Preload animal images or define colors
+    // For simplicity, we'll represent animals as colored spheres
+
+    class Animal {
+      constructor(type, x, y, z) {
+        this.type = type; // 'chicken' or 'cow'
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.speed = 1.5;
+        this.direction = p5.Vector.random2D(); // Random initial direction
+      }
+
+      update() {
+        // Simple movement: move forward, occasionally change direction
+        if (random(1) < 0.01) { // 1% chance to change direction each frame
+          this.direction = p5.Vector.random2D();
+        }
+
+        this.x += this.direction.x * this.speed;
+        this.z += this.direction.y * this.speed;
+
+        // Boundary conditions (within terrain limits)
+        const terrainLimit = loadRadius * 2;
+        if (abs(this.x) > terrainLimit * blockSize || abs(this.z) > terrainLimit * blockSize) {
+          this.direction.mult(-1); // Reverse direction if out of bounds
+        }
+
+        // Ensure animals stay on the surface
+        const blockX = Math.floor(this.x / blockSize);
+        const blockZ = Math.floor(this.z / blockSize);
+        let maxY = getMaxY(blockX, blockZ);
+        this.y = (maxY + 1) * blockSize; // Position just above the surface
+      }
+
+      draw() {
+        push();
+        translate(this.x, this.y, this.z);
+        noStroke();
+        if (this.type === 'chicken') {
+          fill(255, 255, 255); // White color for chicken
+          sphere(blockSize / 3);
+        } else if (this.type === 'cow') {
+          fill(150, 75, 0); // Brown color for cow
+          sphere(blockSize / 2);
+        }
+        pop();
+      }
+    }
+
     function setup() {
       createCanvas(windowWidth, windowHeight, WEBGL);
       // Initialize procedural terrain around the starting point
@@ -103,6 +158,8 @@
       setupBlockSelector();
       // Position player on the surface
       setPlayerToSurface();
+      // Initialize animals
+      initializeAnimals();
     }
 
     function draw() {
@@ -126,6 +183,12 @@
           box(blockSize);
           pop();
         }
+      }
+
+      // Draw animals
+      for (let animal of animals) {
+        animal.update();
+        animal.draw();
       }
 
       // Highlight targeted block
@@ -152,21 +215,16 @@
 
     function handleMovement() {
       let speed = 5;
-      let dx = 0, dz = 0;
+      let dy = 0; // Vertical movement
 
-      if (keys['w']) dz -= speed;
-      if (keys['s']) dz += speed;
-      if (keys['a']) dx -= speed;
-      if (keys['d']) dx += speed;
+      if (keys['w']) camZ -= speed;
+      if (keys['s']) camZ += speed;
+      if (keys['a']) camX -= speed;
+      if (keys['d']) camX += speed;
+      if (keys[' ']) dy -= speed; // Move up
+      if (keys['shift']) dy += speed; // Move down
 
-      // Calculate forward and right vectors
-      let forwardX = sin(yaw);
-      let forwardZ = -cos(yaw);
-      let rightX = cos(yaw);
-      let rightZ = sin(yaw);
-
-      camX += forwardX * dz + rightX * dx;
-      camZ += forwardZ * dz + rightZ * dx;
+      camY += dy;
 
       // Generate terrain around new position
       generateTerrain(camX, camZ);
@@ -369,6 +427,42 @@
       camY = (maxY + 1) * blockSize; // Position player just above the surface
       // Set the camera's initial direction to look slightly downward
       camera(camX, camY, camZ, camX, camY - blockSize, camZ - blockSize, 0, -1, 0);
+    }
+
+    // Initialize animals and add them to the animals array
+    function initializeAnimals() {
+      // Add a few chickens and cows at random positions
+      for (let i = 0; i < 5; i++) {
+        let x = floor(random(-loadRadius * blockSize, loadRadius * blockSize));
+        let z = floor(random(-loadRadius * blockSize, loadRadius * blockSize));
+        let blockX = floor(x / blockSize);
+        let blockZ = floor(z / blockSize);
+        let maxY = getMaxY(blockX, blockZ);
+        let y = (maxY + 1) * blockSize; // Position just above the surface
+        animals.push(new Animal('chicken', x, y, z));
+      }
+
+      for (let i = 0; i < 3; i++) {
+        let x = floor(random(-loadRadius * blockSize, loadRadius * blockSize));
+        let z = floor(random(-loadRadius * blockSize, loadRadius * blockSize));
+        let blockX = floor(x / blockSize);
+        let blockZ = floor(z / blockSize);
+        let maxY = getMaxY(blockX, blockZ);
+        let y = (maxY + 1) * blockSize; // Position just above the surface
+        animals.push(new Animal('cow', x, y, z));
+      }
+    }
+
+    // Get the maximum y for given x and z
+    function getMaxY(x, z) {
+      let maxY = -Infinity;
+      for (let [key, type] of blocks) {
+        let [bx, by, bz] = key.split(',').map(Number);
+        if (bx === x && bz === z && by > maxY) {
+          maxY = by;
+        }
+      }
+      return maxY === -Infinity ? 0 : maxY;
     }
 
     // Setup Block Selector UI
