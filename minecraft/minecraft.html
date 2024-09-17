@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple Minecraft Clone with p5.js</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #instructions {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div id="instructions">
+    <h3>Controls:</h3>
+    <p>W/A/S/D: Move</p>
+    <p>Mouse Drag: Look Around</p>
+    <p>Left Click: Remove Block</p>
+    <p>Right Click: Add Block</p>
+    <p>Scroll: Change Block Distance</p>
+  </div>
+
+  <!-- p5.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.10.0/p5.min.js"></script>
+  <script>
+    let blockSize = 50;
+    let blocks = new Set();
+    let camX = 0, camY = 100, camZ = 300;
+    let yaw = 0, pitch = 0;
+    let keys = {};
+    let lastMouseX, lastMouseY;
+    let isDragging = false;
+    let maxDistance = 500;
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight, WEBGL);
+      // Initialize ground blocks
+      for (let x = -10; x <= 10; x++) {
+        for (let z = -10; z <= 10; z++) {
+          addBlock(x, 0, z);
+        }
+      }
+      // Prevent context menu on right-click
+      document.oncontextmenu = () => false;
+      // Initialize last mouse positions
+      lastMouseX = width / 2;
+      lastMouseY = height / 2;
+    }
+
+    function draw() {
+      background(135, 206, 235); // Sky blue
+      handleMovement();
+      updateCamera();
+
+      // Basic lighting
+      ambientLight(150);
+      directionalLight(255, 255, 255, 0, -1, -1);
+
+      // Draw all blocks
+      for (let block of blocks) {
+        let [x, y, z] = block.split(',').map(Number);
+        push();
+        translate(x * blockSize, y * blockSize, z * blockSize);
+        fill(100, 200, 100); // Green blocks
+        box(blockSize);
+        pop();
+      }
+
+      // Highlight targeted block
+      let target = getIntersectedBlock();
+      if (target) {
+        let [x, y, z] = target;
+        push();
+        translate(x * blockSize, y * blockSize, z * blockSize);
+        noFill();
+        stroke(255, 0, 0);
+        strokeWeight(4);
+        box(blockSize);
+        pop();
+      }
+    }
+
+    function keyPressed() {
+      keys[key.toLowerCase()] = true;
+    }
+
+    function keyReleased() {
+      keys[key.toLowerCase()] = false;
+    }
+
+    function handleMovement() {
+      let speed = 5;
+      let dx = 0, dz = 0;
+
+      if (keys['w']) dz -= speed;
+      if (keys['s']) dz += speed;
+      if (keys['a']) dx -= speed;
+      if (keys['d']) dx += speed;
+
+      // Calculate forward and right vectors
+      let forwardX = sin(yaw);
+      let forwardZ = -cos(yaw);
+      let rightX = cos(yaw);
+      let rightZ = sin(yaw);
+
+      camX += forwardX * dz + rightX * dx;
+      camZ += forwardZ * dz + rightZ * dx;
+    }
+
+    function updateCamera() {
+      // Calculate camera direction
+      let dirX = sin(yaw) * cos(pitch);
+      let dirY = sin(pitch);
+      let dirZ = -cos(yaw) * cos(pitch);
+      camera(camX, camY, camZ, camX + dirX, camY + dirY, camZ + dirZ, 0, -1, 0);
+    }
+
+    function mouseDragged() {
+      let sensitivity = 0.005;
+      let deltaX = movedX * sensitivity;
+      let deltaY = movedY * sensitivity;
+
+      yaw += -deltaX;
+      pitch += -deltaY;
+
+      // Limit pitch to prevent flipping
+      pitch = constrain(pitch, -HALF_PI + 0.01, HALF_PI - 0.01);
+    }
+
+    function mouseWheel(event) {
+      // Adjust max distance based on scroll
+      maxDistance += event.delta;
+      maxDistance = constrain(maxDistance, 100, 1000);
+    }
+
+    function mousePressed() {
+      if (mouseButton === LEFT) {
+        removeBlockAtMouse();
+      } else if (mouseButton === RIGHT) {
+        addBlockAtMouse();
+      }
+    }
+
+    function addBlock(x, y, z) {
+      const key = `${x},${y},${z}`;
+      blocks.add(key);
+    }
+
+    function removeBlock(x, y, z) {
+      const key = `${x},${y},${z}`;
+      blocks.delete(key);
+    }
+
+    function addBlockAtMouse() {
+      let intersect = getIntersectedBlock();
+      if (intersect) {
+        let [x, y, z, face] = intersect;
+        // Add block adjacent to the face clicked
+        switch(face) {
+          case 'top': y -= 1; break;
+          case 'bottom': y += 1; break;
+          case 'left': x += 1; break;
+          case 'right': x -= 1; break;
+          case 'front': z += 1; break;
+          case 'back': z -= 1; break;
+        }
+        addBlock(x, y, z);
+      }
+    }
+
+    function removeBlockAtMouse() {
+      let intersect = getIntersectedBlock();
+      if (intersect) {
+        let [x, y, z] = intersect;
+        removeBlock(x, y, z);
+      }
+    }
+
+    function getIntersectedBlock() {
+      // Raycasting: Cast a ray from the camera position in the direction it's facing
+      let dir = createVector(sin(yaw) * cos(pitch), sin(pitch), -cos(yaw) * cos(pitch));
+      let camPos = createVector(camX, camY, camZ);
+      let step = blockSize / 2;
+      for (let d = 0; d < maxDistance; d += step) {
+        let pos = p5.Vector.add(camPos, p5.Vector.mult(dir, d));
+        let x = Math.floor(pos.x / blockSize + 0.5);
+        let y = Math.floor(pos.y / blockSize + 0.5);
+        let z = Math.floor(pos.z / blockSize + 0.5);
+        const key = `${x},${y},${z}`;
+        if (blocks.has(key)) {
+          // Determine which face is hit based on the direction
+          let face = getFace(dir);
+          return [x, y, z, face];
+        }
+      }
+      return null;
+    }
+
+    function getFace(dir) {
+      const absDir = createVector(abs(dir.x), abs(dir.y), abs(dir.z));
+      if (absDir.x > absDir.y && absDir.x > absDir.z) {
+        return dir.x > 0 ? 'left' : 'right';
+      } else if (absDir.y > absDir.x && absDir.y > absDir.z) {
+        return dir.y > 0 ? 'top' : 'bottom';
+      } else {
+        return dir.z > 0 ? 'front' : 'back';
+      }
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+  </script>
+</body>
+</html>
