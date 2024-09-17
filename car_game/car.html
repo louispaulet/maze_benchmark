@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Procedural Infinite City Car Game - 8-bit Style</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; image-rendering: pixelated; }
+    </style>
+</head>
+<body>
+
+<!-- Include p5.js library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.10.0/p5.min.js"></script>
+
+<!-- Game Code -->
+<script>
+// Global variables
+let car;
+let tileSize = 32; // Adjusted tile size for 8-bit style
+let viewRange = 15; // Number of tiles to display around the car
+
+function setup() {
+    createCanvas(windowWidth, windowHeight);
+    car = new Car();
+    noiseDetail(2, 0.5); // Enhance noise function for better terrain variation
+    noSmooth(); // Disable smoothing for pixelated effect
+}
+
+function draw() {
+    background(135, 206, 235); // Sky color
+
+    // Handle input
+    handleInput();
+
+    translate(width / 2 - car.x, height / 2 - car.y);
+    drawCity();
+    car.update();
+    car.show();
+}
+
+// Input handling
+function handleInput() {
+    if (keyIsDown(UP_ARROW)) {
+        car.accelerate(0.2);
+    } else if (keyIsDown(DOWN_ARROW)) {
+        car.accelerate(-0.2);
+    } else {
+        car.applyFriction();
+    }
+
+    if (keyIsDown(LEFT_ARROW)) {
+        car.turn(-0.05);
+    } else if (keyIsDown(RIGHT_ARROW)) {
+        car.turn(0.05);
+    }
+}
+
+// Car class
+class Car {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.angle = 0;
+        this.speed = 0;
+        this.maxSpeed = 5;
+    }
+
+    update() {
+        this.x += this.speed * cos(this.angle);
+        this.y += this.speed * sin(this.angle);
+    }
+
+    show() {
+        push();
+        translate(this.x, this.y);
+        rotate(this.angle);
+        noStroke();
+        fill(255, 0, 0);
+        rectMode(CENTER);
+        rect(0, 0, 16, 8); // Adjusted size for 8-bit style
+        fill(0);
+        // Wheels
+        rect(-5, -5, 3, 3);
+        rect(5, -5, 3, 3);
+        rect(-5, 5, 3, 3);
+        rect(5, 5, 3, 3);
+        pop();
+    }
+
+    accelerate(amount) {
+        this.speed += amount;
+        this.speed = constrain(this.speed, -this.maxSpeed, this.maxSpeed);
+    }
+
+    applyFriction() {
+        this.speed *= 0.95;
+        if (abs(this.speed) < 0.05) {
+            this.speed = 0;
+        }
+    }
+
+    turn(angle) {
+        if (this.speed !== 0) {
+            let direction = this.speed > 0 ? 1 : -1;
+            this.angle += angle * direction;
+        }
+    }
+}
+
+// Draw the infinite city
+function drawCity() {
+    let startX = floor((car.x - viewRange * tileSize) / tileSize) * tileSize;
+    let endX = floor((car.x + viewRange * tileSize) / tileSize) * tileSize;
+    let startY = floor((car.y - viewRange * tileSize) / tileSize) * tileSize;
+    let endY = floor((car.y + viewRange * tileSize) / tileSize) * tileSize;
+
+    for (let x = startX; x <= endX; x += tileSize) {
+        for (let y = startY; y <= endY; y += tileSize) {
+            let tileType = getTileType(x, y);
+            drawTile(x, y, tileType);
+        }
+    }
+}
+
+// Determine the type of tile based on position
+function getTileType(x, y) {
+    // Generate highways every 15 tiles
+    let highwayInterval = 15 * tileSize;
+    let mainRoadInterval = 5 * tileSize;
+    let sideRoadInterval = 2 * tileSize;
+
+    if (x % highwayInterval === 0 || y % highwayInterval === 0) {
+        return 'highway';
+    } else if (x % mainRoadInterval === 0 || y % mainRoadInterval === 0) {
+        return 'mainRoad';
+    } else if (x % sideRoadInterval === 0 || y % sideRoadInterval === 0) {
+        return 'sideRoad';
+    } else {
+        // Use noise to determine terrain features
+        let n = noise(x * 0.001, y * 0.001);
+        if (n > 0.8) {
+            return 'skyscraper';
+        } else if (n > 0.6) {
+            return 'house';
+        } else if (n > 0.5) {
+            return 'shop';
+        } else if (n > 0.4) {
+            return 'park';
+        } else if (n > 0.3) {
+            return 'tree';
+        } else {
+            return 'grass';
+        }
+    }
+}
+
+// Function to generate consistent pseudorandom numbers
+function pseudoRandom(seed) {
+    return fract(sin(seed) * 43758.5453);
+}
+
+function fract(x) {
+    return x - floor(x);
+}
+
+// Draw a tile at a given position based on its type
+function drawTile(x, y, type) {
+    push();
+    translate(x, y);
+
+    if (type === 'highway') {
+        // Draw highway with multiple lanes
+        fill(50);
+        rect(0, 0, tileSize, tileSize);
+        stroke(255);
+        strokeWeight(1);
+        if (x % (15 * tileSize) === 0) {
+            // Vertical highway
+            for (let i = -1; i <= 1; i++) {
+                line(tileSize / 2 + i * 5, 0, tileSize / 2 + i * 5, tileSize);
+            }
+        } else {
+            // Horizontal highway
+            for (let i = -1; i <= 1; i++) {
+                line(0, tileSize / 2 + i * 5, tileSize, tileSize / 2 + i * 5);
+            }
+        }
+        noStroke();
+    } else if (type === 'mainRoad') {
+        // Draw main road
+        fill(60);
+        rect(0, 0, tileSize, tileSize);
+        stroke(255, 255, 0);
+        strokeWeight(1);
+        if (x % (5 * tileSize) === 0) {
+            // Vertical road
+            line(tileSize / 2, 0, tileSize / 2, tileSize);
+        } else {
+            // Horizontal road
+            line(0, tileSize / 2, tileSize, tileSize / 2);
+        }
+        noStroke();
+    } else if (type === 'sideRoad') {
+        // Draw side road
+        fill(80);
+        rect(0, 0, tileSize, tileSize);
+    } else if (type === 'skyscraper') {
+        // Draw skyscraper with consistent height
+        let h = skyscraperHeight(x, y);
+        fill(100, 100, 100);
+        rect(0, tileSize - h, tileSize, h);
+        fill(200);
+        // Windows
+        for (let i = 2; i < tileSize - 2; i += 4) {
+            for (let j = tileSize - h + 2; j < tileSize - 2; j += 6) {
+                rect(i, j, 2, 4);
+            }
+        }
+    } else if (type === 'house') {
+        // Draw house with a roof
+        fill(180, 120, 70);
+        rect(4, 12, tileSize - 8, tileSize - 16);
+        fill(150, 50, 30);
+        triangle(0, 12, tileSize / 2, 0, tileSize, 12);
+        fill(255);
+        rect(tileSize / 2 - 3, 20, 6, 6); // Door
+        rect(8, 16, 4, 4); // Window
+        rect(tileSize - 12, 16, 4, 4); // Window
+    } else if (type === 'shop') {
+        // Draw shop with glass front
+        fill(120, 120, 170);
+        rect(2, 14, tileSize - 4, tileSize - 16);
+        fill(80, 80, 120);
+        rect(2, 14, tileSize - 4, 4); // Signboard
+        fill(255);
+        textSize(4);
+        textAlign(CENTER, CENTER);
+        text('SHOP', tileSize / 2, 16);
+        fill(135, 206, 235);
+        rect(4, 20, tileSize - 8, tileSize - 22); // Glass front
+    } else if (type === 'park') {
+        // Draw park area
+        fill(34, 139, 34);
+        rect(0, 0, tileSize, tileSize);
+        // Add static trees based on tile coordinates
+        let treePositions = getTreePositions(x, y);
+        for (let pos of treePositions) {
+            drawTree(pos[0], pos[1]);
+        }
+    } else if (type === 'tree') {
+        // Draw single tree
+        drawTree(tileSize / 2, tileSize / 2);
+    } else {
+        // Draw grass
+        fill(107, 142, 35);
+        rect(0, 0, tileSize, tileSize);
+    }
+
+    pop();
+}
+
+// Function to get consistent tree positions for park tiles
+function getTreePositions(x, y) {
+    let positions = [];
+    let numTrees = 3;
+    let seed = x * 10000 + y; // Unique seed per tile
+    for (let i = 0; i < numTrees; i++) {
+        let tx = tileSize * pseudoRandom(seed + i * 10) * 0.6 + tileSize * 0.2;
+        let ty = tileSize * pseudoRandom(seed + i * 20) * 0.6 + tileSize * 0.2;
+        positions.push([tx, ty]);
+    }
+    return positions;
+}
+
+// Function to draw a tree at a specific position
+function drawTree(x, y) {
+    push();
+    translate(x, y);
+    fill(34, 139, 34);
+    ellipse(0, -5, 10, 10);
+    fill(139, 69, 19);
+    rect(-1.5, 0, 3, 5);
+    pop();
+}
+
+// Function to get consistent skyscraper height
+function skyscraperHeight(x, y) {
+    let seed = x * 10000 + y;
+    return tileSize * 1.5 + tileSize * pseudoRandom(seed) * 1.5;
+}
+
+// Handle window resizing
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+}
+</script>
+
+</body>
+</html>

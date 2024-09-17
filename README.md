@@ -64,3 +64,9 @@ For more information about the Maze Benchmark project, visit our [GitHub reposit
 If you have any questions or feedback about the project, please open an issue in the GitHub repository, and we will be happy to assist you.
 
 Thank you for your interest in improving and utilizing the Maze Benchmark!
+
+## Car game  
+
+We are also testing GPT-o1 by making a small procedural car game.  
+
+[Car game](./car_game/car.html).
