@@ -98,9 +98,7 @@
     // Animal objects
     let animals = [];
 
-    // Preload animal images or define colors
-    // For simplicity, we'll represent animals as colored spheres
-
+    // Animal class to represent chickens and cows
     class Animal {
       constructor(type, x, y, z) {
         this.type = type; // 'chicken' or 'cow'
@@ -213,6 +211,7 @@
       keys[key.toLowerCase()] = false;
     }
 
+    //movement keys are setup here
     function handleMovement() {
       let speed = 5;
       let dy = 0; // Vertical movement
@@ -226,16 +225,16 @@
         camX -= sin(yaw) * speed;
         camZ -= -cos(yaw) * speed;
       }
-      if (keys['a']) {
+      if (keys['d']) {
         camX -= cos(yaw) * speed;
         camZ -= sin(yaw) * speed;
       }
-      if (keys['d']) {
+      if (keys['a']) {
         camX += cos(yaw) * speed;
         camZ += sin(yaw) * speed;
       }
-      if (keys[' ']) dy -= speed; // Move up
-      if (keys['shift']) dy += speed; // Move down
+      if (keys[' ']) dy += speed; 
+      if (keys['shift']) dy -= speed; 
 
       camY += dy;
 
