@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Agar.io Clone with Improvements</title>
+  <title>Agar.io Clone with Advanced Features</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.10.0/p5.min.js"></script>
 </head>
 <body>
@@ -9,28 +9,77 @@
 let player;
 let foods = [];
 let enemies = [];
-const TOTAL_FOOD = 100;
-const TOTAL_ENEMIES = 5; // Reduced to 5 enemies
+const TOTAL_FOOD = 500;
+const TOTAL_ENEMIES = 5;
 let gameOver = false;
 let keys = {}; // To track pressed keys
+let restartButton = null;
+
+const funnyNames = [
+  "Mr. Blob", "Gobbler", "Spherio", "Circletron", "Roundy McRoundface",
+  "Blobzilla", "The Devourer", "Hungry Henry", "Nom Nom", "Bubbles",
+  "Globby", "Orbital", "Wobbles", "Spheroid", "Blobbert",
+  "Sphere Lord", "Gloop", "Gooey", "Big Mouth", "Chomper"
+];
+
+function shuffle(array) {
+  let currentIndex = array.length, temporaryValue, randomIndex;
+  while (0 !== currentIndex) {
+    randomIndex = floor(random(0, currentIndex));
+    currentIndex -= 1;
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+  }
+  return array;
+}
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  player = new Cell(0, 0, 20, color(0, 255, 0));
+  startNewGame();
+}
 
-  // Generate food cells
-  for (let i = 0; i < TOTAL_FOOD; i++) {
-    let x = random(-width * 2, width * 2);
-    let y = random(-height * 2, height * 2);
-    foods.push(new Cell(x, y, 5, color(255, 0, 0)));
-  }
+function startNewGame() {
+  gameOver = false;
+  keys = {};
+  restartButton = null;
+
+  let shuffledNames = shuffle(funnyNames.slice());
+  let playerName = shuffledNames.pop() || "Player";
+  player = new Cell(0, 0, 20, color(0, 255, 0), playerName);
+
+  // Generate food clusters
+  foods = [];
+  generateFoodClusters();
 
   // Generate enemy cells
+  enemies = [];
   for (let i = 0; i < TOTAL_ENEMIES; i++) {
     let x = random(-width * 2, width * 2);
     let y = random(-height * 2, height * 2);
     let r = random(15, 40);
-    enemies.push(new EnemyCell(x, y, r, color(0, 0, 255)));
+    let name = shuffledNames.pop() || "Enemy " + i;
+    enemies.push(new EnemyCell(x, y, r, color(0, 0, 255), name));
+  }
+}
+
+function generateFoodClusters() {
+  let numClusters = 50;
+  for (let i = 0; i < numClusters; i++) {
+    let clusterX = random(-width * 2, width * 2);
+    let clusterY = random(-height * 2, height * 2);
+    let clusterSize = random(10, 30);
+
+    for (let j = 0; j < clusterSize; j++) {
+      let angle = random(TWO_PI);
+      let radius = random(0, 100);
+      let x = clusterX + radius * cos(angle);
+      let y = clusterY + radius * sin(angle);
+      let food = new Cell(x, y, 5, color(255, 0, 0));
+      food.eaten = false;
+      food.respawnTime = 0;
+      foods.push(food);
+    }
   }
 }
 
@@ -40,57 +89,120 @@ function draw() {
     fill(255);
     textSize(64);
     textAlign(CENTER, CENTER);
-    text('Game Over', width / 2, height / 2);
+    text('Game Over', width / 2, height / 2 - 50);
+
+    if (!restartButton) {
+      restartButton = createButton('New Game');
+      restartButton.position(width / 2 - 50, height / 2);
+      restartButton.mousePressed(startNewGame);
+    }
     return;
+  } else {
+    if (restartButton) {
+      restartButton.remove();
+      restartButton = null;
+    }
   }
 
   background(200);
 
-  // Update player velocity based on currently pressed keys
   updatePlayerVelocity();
+  player.update();
 
   // Translate the canvas to center the player
   translate(width / 2 - player.pos.x, height / 2 - player.pos.y);
 
   // Update and display food cells
-  for (let i = foods.length - 1; i >= 0; i--) {
-    foods[i].show();
-    if (player.eats(foods[i])) {
-      // Increase player's size
-      let sumArea = PI * player.r * player.r + PI * foods[i].r * foods[i].r;
-      player.r = sqrt(sumArea / PI);
-
-      foods.splice(i, 1);
-      // Add a new food cell
-      let x = player.pos.x + random(-width, width);
-      let y = player.pos.y + random(-height, height);
-      foods.push(new Cell(x, y, 5, color(255, 0, 0)));
+  for (let food of foods) {
+    if (food.eaten) {
+      if (millis() > food.respawnTime) {
+        // Respawn the food
+        food.eaten = false;
+        food.pos.x = player.pos.x + random(-width * 2, width * 2);
+        food.pos.y = player.pos.y + random(-height * 2, height * 2);
+      }
+    } else {
+      food.show();
     }
   }
 
-  // Update and display enemy cells
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    enemies[i].move(player);
-    enemies[i].update();
-    enemies[i].show();
+  // Update and display enemies
+  for (let enemy of enemies) {
+    enemy.move(player, foods);
+    enemy.update();
+    enemy.show();
+  }
 
-    if (player.eats(enemies[i])) {
-      if (player.r > enemies[i].r * 1.1) {
-        // Player eats the enemy
-        let sumArea = PI * player.r * player.r + PI * enemies[i].r * enemies[i].r;
+  // Display player
+  player.show();
+
+  // Process collisions between player and food
+  for (let food of foods) {
+    if (!food.eaten && player.eats(food)) {
+      // Increase player's size
+      let sumArea = PI * player.r * player.r + PI * food.r * food.r;
+      player.r = sqrt(sumArea / PI);
+
+      // Mark the food as eaten
+      food.eaten = true;
+      food.respawnTime = millis() + 20000; // 20 seconds later
+    }
+  }
+
+  // Enemies eat food
+  for (let enemy of enemies) {
+    for (let food of foods) {
+      if (!food.eaten && enemy.eats(food)) {
+        // Increase enemy's size
+        let sumArea = PI * enemy.r * enemy.r + PI * food.r * food.r;
+        enemy.r = sqrt(sumArea / PI);
+
+        // Mark the food as eaten
+        food.eaten = true;
+        food.respawnTime = millis() + 20000; // 20 seconds later
+      }
+    }
+  }
+
+  // Enemies eat other enemies
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    let enemy = enemies[i];
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      if (i != j) {
+        let otherEnemy = enemies[j];
+        if (enemy.eats(otherEnemy) && enemy.r > otherEnemy.r * 1.1) {
+          // Enemy eats other enemy
+          let sumArea = PI * enemy.r * enemy.r + PI * otherEnemy.r * otherEnemy.r;
+          enemy.r = sqrt(sumArea / PI);
+
+          enemies.splice(j, 1);
+          if (j < i) {
+            i--;
+          }
+        }
+      }
+    }
+  }
+
+  // Process collisions between player and enemies
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    let enemy = enemies[i];
+    if (player.eats(enemy)) {
+      if (player.r > enemy.r * 1.1) {
+        // Player eats enemy
+        let sumArea = PI * player.r * player.r + PI * enemy.r * enemy.r;
         player.r = sqrt(sumArea / PI);
 
         enemies.splice(i, 1);
-      } else if (player.r < enemies[i].r * 0.9) {
-        // Player is eaten by the enemy
+      } else if (enemy.r > player.r * 1.1) {
+        // Enemy eats player
         gameOver = true;
       }
     }
   }
 
-  // Update and display the player cell
-  player.update();
-  player.show();
+  // Update the scoreboard
+  updateScoreboard();
 }
 
 function keyPressed() {
@@ -115,12 +227,39 @@ function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
 
+function updateScoreboard() {
+  let allCells = [player].concat(enemies);
+  allCells.sort((a, b) => (PI * b.r * b.r) - (PI * a.r * a.r));
+
+  let scores = allCells.slice(0, 5); // Top 5
+
+  // Display the scores
+  push();
+  resetMatrix();
+  fill(0);
+  textSize(16);
+  textAlign(LEFT, TOP);
+  let y = 10;
+  text("Top Cells:", 10, y);
+  y += 20;
+  for (let cell of scores) {
+    let name = cell.name || "Unnamed";
+    let volume = floor(PI * cell.r * cell.r);
+    text(name + ": " + volume, 10, y);
+    y += 20;
+  }
+  pop();
+}
+
 class Cell {
-  constructor(x, y, r, col) {
+  constructor(x, y, r, col, name) {
     this.pos = createVector(x, y);
     this.r = r;
     this.color = col;
     this.vel = createVector(0, 0);
+    this.name = name || "";
+    this.eaten = false; // For food cells
+    this.respawnTime = 0;
   }
 
   update() {
@@ -131,6 +270,13 @@ class Cell {
     fill(this.color);
     noStroke();
     ellipse(this.pos.x, this.pos.y, this.r * 2, this.r * 2);
+
+    if (this.name) {
+      fill(0);
+      textSize(this.r / 2);
+      textAlign(CENTER, CENTER);
+      text(this.name, this.pos.x, this.pos.y);
+    }
   }
 
   setVelocity(x, y) {
@@ -139,7 +285,7 @@ class Cell {
 
   eats(other) {
     let d = p5.Vector.dist(this.pos, other.pos);
-    if (d < this.r + other.r) {
+    if (d < this.r + other.r && this.r > other.r * 0.9) {
       return true;
     } else {
       return false;
@@ -148,25 +294,50 @@ class Cell {
 }
 
 class EnemyCell extends Cell {
-  constructor(x, y, r, col) {
-    super(x, y, r, col);
+  constructor(x, y, r, col, name) {
+    super(x, y, r, col, name);
   }
 
-  move(player) {
-    let direction = p5.Vector.sub(player.pos, this.pos);
-    direction.normalize();
+  move(player, foods) {
+    let distanceToPlayer = p5.Vector.dist(this.pos, player.pos);
 
     if (this.r > player.r * 1.1) {
       // Enemy is bigger, chase the player
-      this.vel = direction.copy().mult(1.5);
-    } else if (this.r < player.r * 0.9) {
-      // Enemy is smaller, run away from the player
-      this.vel = direction.copy().mult(-1.5);
+      let direction = p5.Vector.sub(player.pos, this.pos);
+      direction.normalize();
+      this.vel = direction.mult(1.5);
     } else {
-      // Similar size, move randomly
-      if (frameCount % 60 === 0) {
-        // Change direction every second
-        this.vel = p5.Vector.random2D().mult(1);
+      // Enemy is smaller or similar size
+      if (distanceToPlayer < 200) {
+        // Run away from the player
+        let direction = p5.Vector.sub(this.pos, player.pos);
+        direction.normalize();
+        this.vel = direction.mult(1.5);
+      } else {
+        // Seek the nearest passive cell to eat
+        let closestFood = null;
+        let minDistance = Infinity;
+
+        for (let food of foods) {
+          if (!food.eaten) {
+            let d = p5.Vector.dist(this.pos, food.pos);
+            if (d < minDistance) {
+              minDistance = d;
+              closestFood = food;
+            }
+          }
+        }
+
+        if (closestFood) {
+          let direction = p5.Vector.sub(closestFood.pos, this.pos);
+          direction.normalize();
+          this.vel = direction.mult(1);
+        } else {
+          // Move randomly
+          if (frameCount % 60 === 0) {
+            this.vel = p5.Vector.random2D().mult(1);
+          }
+        }
       }
     }
   }
