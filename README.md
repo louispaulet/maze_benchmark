@@ -65,8 +65,16 @@ If you have any questions or feedback about the project, please open an issue in
 
 Thank you for your interest in improving and utilizing the Maze Benchmark!
 
-## Car game  
+## Advanced GPTo1 testing
 
-We are also testing GPT-o1 by making a small procedural car game.  
+### Car game  
+
+Testing GPT-o1 by making a small procedural car game.  
 
 [Car game](./car_game/car.html).
+
+### AGAR.IO clone
+
+Testing GPT-o1 by making a small AGAR.IO clone.  
+
+[AGAR.IO clone](./agario/agario.html).
