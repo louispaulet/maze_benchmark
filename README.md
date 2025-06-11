@@ -38,6 +38,7 @@ These steps ensure that each LLM's output is evaluated fairly from a user's pers
 ## Access the Mazes 🌍
 
 Below are links to the final versions of each LLM-generated maze. Enjoy full navigational controls: use the left click to rotate, right click to translate, and middle click to adjust the zoom level.
+You can also browse the entire ranking with previews on [index.html](./index.html).
 
 Ranked from best to worse:  
 - [GPT-o1 **NEW BEST** Maze](https://louispaulet.github.io/maze_benchmark/o1_version_A.html)
