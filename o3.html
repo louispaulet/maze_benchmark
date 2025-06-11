@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Maze (30x30) - Three.js</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.121.1/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js';
+
+// Maze params
+const COLS = 30;
+const ROWS = 30;
+const CELL_SIZE = 1;            // length of a cell edge
+const WALL_THICKNESS = 0.1;     // thickness of every wall
+const WALL_HEIGHT = 0.5;        // visual wall height
+
+// -----------------------------------------------------------------------------
+// Scene & renderer
+// -----------------------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xffffff);
+
+const camera = new THREE.PerspectiveCamera(
+  60,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.set(COLS / 2, Math.max(COLS, ROWS) * 1.2, ROWS / 2);
+camera.lookAt(COLS / 2, 0, ROWS / 2);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(COLS / 2, 0, ROWS / 2);
+controls.enablePan = false;
+controls.maxPolarAngle = Math.PI / 2; // stop below ground rotation
+controls.minDistance = 10;
+controls.maxDistance = 150;
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// -----------------------------------------------------------------------------
+// Maze generation — recursive back‑tracking (iterative stack)
+// -----------------------------------------------------------------------------
+class Cell {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.visited = false;
+    this.walls = { top: true, right: true, bottom: true, left: true };
+  }
+}
+
+const grid = Array.from({ length: ROWS }, (_, y) =>
+  Array.from({ length: COLS }, (_, x) => new Cell(x, y))
+);
+
+function unvisitedNeighbors(cell) {
+  const { x, y } = cell;
+  const neighbors = [];
+  if (y > 0) neighbors.push(grid[y - 1][x]); // top
+  if (x < COLS - 1) neighbors.push(grid[y][x + 1]); // right
+  if (y < ROWS - 1) neighbors.push(grid[y + 1][x]); // bottom
+  if (x > 0) neighbors.push(grid[y][x - 1]); // left
+  return neighbors.filter((n) => !n.visited);
+}
+
+function removeWalls(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  if (dx === 1) {
+    a.walls.left = false;
+    b.walls.right = false;
+  } else if (dx === -1) {
+    a.walls.right = false;
+    b.walls.left = false;
+  }
+  if (dy === 1) {
+    a.walls.top = false;
+    b.walls.bottom = false;
+  } else if (dy === -1) {
+    a.walls.bottom = false;
+    b.walls.top = false;
+  }
+}
+
+function generateMaze() {
+  const stack = [];
+  const start = grid[0][0];
+  start.visited = true;
+  stack.push(start);
+
+  while (stack.length) {
+    const current = stack[stack.length - 1];
+    const neighbors = unvisitedNeighbors(current);
+    if (neighbors.length) {
+      const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+      removeWalls(current, next);
+      next.visited = true;
+      stack.push(next);
+    } else {
+      stack.pop();
+    }
+  }
+}
+
+generateMaze();
+
+// -----------------------------------------------------------------------------
+// Materials & lights
+// -----------------------------------------------------------------------------
+const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x3333ff });
+const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xdddddd });
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+scene.background = new THREE.Color(0x87ceeb);   // light-sky-blue
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+dirLight.position.set(20, 30, 10);
+scene.add(dirLight);
+
+// -----------------------------------------------------------------------------
+// Floor — fits the maze footprint exactly
+// -----------------------------------------------------------------------------
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(COLS * CELL_SIZE, ROWS * CELL_SIZE),
+  floorMaterial
+);
+floor.rotation.x = -Math.PI / 2;
+floor.position.set(COLS * CELL_SIZE / 2, 0, ROWS * CELL_SIZE / 2);
+scene.add(floor);
+
+// -----------------------------------------------------------------------------
+// Wall geometries (dimensioned so edges meet without clipping)
+// -----------------------------------------------------------------------------
+const horizGeom = new THREE.BoxGeometry(CELL_SIZE, WALL_HEIGHT, WALL_THICKNESS);
+const vertGeom = new THREE.BoxGeometry(WALL_THICKNESS, WALL_HEIGHT, CELL_SIZE);
+
+// Loop through cells and create walls
+for (let y = 0; y < ROWS; y++) {
+  for (let x = 0; x < COLS; x++) {
+    const cell = grid[y][x];
+    const baseX = x * CELL_SIZE;
+    const baseZ = y * CELL_SIZE;
+
+    // Top wall (shared with cell above)
+    if (cell.walls.top) {
+      const wall = new THREE.Mesh(horizGeom, wallMaterial);
+      wall.position.set(
+        baseX + CELL_SIZE / 2,
+        WALL_HEIGHT / 2,
+        baseZ - WALL_THICKNESS / 2
+      );
+      scene.add(wall);
+    }
+
+    // Left wall (shared with cell to the left)
+    if (cell.walls.left) {
+      const wall = new THREE.Mesh(vertGeom, wallMaterial);
+      wall.position.set(
+        baseX - WALL_THICKNESS / 2,
+        WALL_HEIGHT / 2,
+        baseZ + CELL_SIZE / 2
+      );
+      scene.add(wall);
+    }
+
+    // Bottom boundary walls (only on last row)
+    if (y === ROWS - 1 && cell.walls.bottom) {
+      const wall = new THREE.Mesh(horizGeom, wallMaterial);
+      wall.position.set(
+        baseX + CELL_SIZE / 2,
+        WALL_HEIGHT / 2,
+        baseZ + CELL_SIZE + WALL_THICKNESS / 2
+      );
+      scene.add(wall);
+    }
+
+    // Right boundary walls (only on last col)
+    if (x === COLS - 1 && cell.walls.right) {
+      const wall = new THREE.Mesh(vertGeom, wallMaterial);
+      wall.position.set(
+        baseX + CELL_SIZE + WALL_THICKNESS / 2,
+        WALL_HEIGHT / 2,
+        baseZ + CELL_SIZE / 2
+      );
+      scene.add(wall);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Render loop
+// -----------------------------------------------------------------------------
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>
