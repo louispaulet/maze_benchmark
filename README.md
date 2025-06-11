@@ -55,7 +55,7 @@ Ranked from best to worse:
 Contributions to the Maze Benchmark project are more than welcome! If you have suggestions for improving the code, new features, or bug fixes, please feel free to fork the repository and submit a pull request.
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file in the repository for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file in the repository for details.
 
 ## Learn More
 For more information about the Maze Benchmark project, visit our [GitHub repository](https://github.com/louispaulet/maze_benchmark).
