@@ -16,4 +16,10 @@ ol { padding-left: 20px; }
     display: block;
 }
 p { text-align: center; }
+
+.maze-instructions {
+  text-align: left;
+  max-width: 600px;
+  margin: 0 auto;
+}
 .centered-text { text-align: center; }
