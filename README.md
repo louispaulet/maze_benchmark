@@ -1,6 +1,8 @@
 # Three.js Maze Generation Benchmark 🌐
 Explore and compare the capabilities of large language models (LLMs) in generating mazes using Three.js.
 
+[Check out the live 3D mazes here!](https://louispaulet.github.io/maze_benchmark/index.html)
+
 ## Objective 🎯
 Our goal is to create a visually engaging, interactive 3D maze in a web browser environment. Here's what we are aiming for:
 - **Maze Generation**: Utilize the recursive backtracking algorithm for maze generation.
