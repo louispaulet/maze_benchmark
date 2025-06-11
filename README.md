@@ -43,7 +43,8 @@ Below are links to the final versions of each LLM-generated maze. Enjoy full nav
 You can also browse the entire ranking with previews on [index.html](./index.html).
 
 Ranked from best to worse:  
-- [GPT-o1 **NEW BEST** Maze](https://louispaulet.github.io/maze_benchmark/o1_version_A.html)
+- [ **NEW BEST** O3 Maze](https://louispaulet.github.io/maze_benchmark/o3.html)
+- [GPT-o1 Maze](https://louispaulet.github.io/maze_benchmark/o1_version_A.html)
 - [GPT-4o](https://louispaulet.github.io/maze_benchmark/gpt4o_version.html)
 - [GPT-4 Reference Maze](https://louispaulet.github.io/maze_benchmark/gpt4_maze.html)
 - [LLAMA3-70B Version](https://louispaulet.github.io/maze_benchmark/llama70b_version.html)
